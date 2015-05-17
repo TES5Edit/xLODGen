@@ -37,6 +37,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Globalization;
 
 using ICSharpCode.SharpZipLib.Core;
 
@@ -121,7 +122,7 @@ namespace ICSharpCode.SharpZipLib.Zip
 		public string TransformFile(string name)
 		{
 			if (name != null) {
-				string lowerName = name.ToLower();
+				string lowerName = name.ToLower(CultureInfo.InvariantCulture);
 				if ( (trimPrefix_ != null) && (lowerName.IndexOf(trimPrefix_) == 0) ) {
 					name = name.Substring(trimPrefix_.Length);
 				}
@@ -168,7 +169,7 @@ namespace ICSharpCode.SharpZipLib.Zip
 			set {
 				trimPrefix_ = value;
 				if (trimPrefix_ != null) {
-					trimPrefix_ = trimPrefix_.ToLower();
+					trimPrefix_ = trimPrefix_.ToLower(CultureInfo.InvariantCulture);
 				}
 			}
 		}

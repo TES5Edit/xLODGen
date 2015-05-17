@@ -10,7 +10,7 @@ namespace LODGenerator.Common
 
         public static bool GetBool(Dictionary<string, string> args, string key, bool defValue = false)
         {
-            if (!args.ContainsKey(key.ToLower()))
+            if (!args.ContainsKey(key.ToLower(CultureInfo.InvariantCulture)))
                 return defValue;
             else
                 return true;
@@ -19,7 +19,7 @@ namespace LODGenerator.Common
         public static float GetFloat(Dictionary<string, string> args, string key, float defValue = 0.0f)
         {
             float result = defValue;
-            if (!args.ContainsKey(key.ToLower()) || !float.TryParse(args[key.ToLower()], NumberStyles.Any, (IFormatProvider)CmdArgs.ci, out result))
+            if (!args.ContainsKey(key.ToLower(CultureInfo.InvariantCulture)) || !float.TryParse(args[key.ToLower(CultureInfo.InvariantCulture)], NumberStyles.Any, (IFormatProvider)CmdArgs.ci, out result))
                 return defValue;
             else
                 return result;
@@ -28,7 +28,7 @@ namespace LODGenerator.Common
         public static int GetInt(Dictionary<string, string> args, string key, int defValue = -1)
         {
             int result = defValue;
-            if (!args.ContainsKey(key.ToLower()) || !int.TryParse(args[key.ToLower()], NumberStyles.Integer, (IFormatProvider)CmdArgs.ci, out result))
+            if (!args.ContainsKey(key.ToLower(CultureInfo.InvariantCulture)) || !int.TryParse(args[key.ToLower(CultureInfo.InvariantCulture)], NumberStyles.Integer, (IFormatProvider)CmdArgs.ci, out result))
                 return defValue;
             else
                 return result;

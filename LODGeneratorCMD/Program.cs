@@ -20,7 +20,7 @@ namespace LODGeneratorCMD
             for (int index = 1; index < Enumerable.Count<string>((IEnumerable<string>)args); ++index)
             {
                 string str = "";
-                string key = args[index].Remove(0, 2).ToLower();
+                string key = args[index].Remove(0, 2).ToLower(CultureInfo.InvariantCulture);
                 if (index + 1 < Enumerable.Count<string>((IEnumerable<string>)args) && !args[index + 1].StartsWith("--"))
                     str = args[++index];
                 dictionary.Add(key, str);
@@ -80,19 +80,19 @@ namespace LODGeneratorCMD
                 if (strArray2.Length == 2)
                 {
                     ++counter;
-                    if (strArray2[0].ToLower() == "worldspace")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "worldspace")
                     {
                         worldspaceName = strArray2[1];
                     }
-                    if (strArray2[0].ToLower() == "cellsw")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "cellsw")
                     {
                         string[] strArray1 = strArray2[1].Split(' ');
                         southWestX = float.Parse(strArray1[0], (IFormatProvider)cultureInfo);
                         southWestY = float.Parse(strArray1[1], (IFormatProvider)cultureInfo);
                     }
-                    if (strArray2[0].ToLower() == "pathdata")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "pathdata")
                     {
-                        gameDir = strArray2[1].ToLower();
+                        gameDir = strArray2[1].ToLower(CultureInfo.InvariantCulture);
                         if (!Directory.Exists(gameDir))
                         {
                             theLog.WriteLog("No Data directory " + gameDir);
@@ -100,7 +100,7 @@ namespace LODGeneratorCMD
                             return -1;
                         }
                     }
-                    if (strArray2[0].ToLower() == "pathoutput")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "pathoutput")
                     {
                         outputDir = strArray2[1];
                         if (!Directory.Exists(outputDir))
@@ -108,87 +108,87 @@ namespace LODGeneratorCMD
                             Directory.CreateDirectory(outputDir);
                         }
                     }
-                    if (strArray2[0].ToLower() == "textureatlasmap")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "textureatlasmap")
                     {
                         uvfile = strArray2[1];
                     }
-                    if (strArray2[0].ToLower() == "resource")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "resource")
                     {
                         if (File.Exists(strArray2[1]))
                         {
-                            BSAFiles.Add(strArray2[1].ToLower());
+                            BSAFiles.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
                         }
                     }
-                    if (strArray2[0].ToLower() == "ishdmeshmask")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "ishdmeshmask")
                     {
-                        HDMesh.Add(strArray2[1].ToLower());
+                        HDMesh.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
                     }
-                    if (strArray2[0].ToLower() == "nothdmeshmask")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "nothdmeshmask")
                     {
-                        notHDMesh.Add(strArray2[1].ToLower());
+                        notHDMesh.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
                     }
-                    if (strArray2[0].ToLower() == "ishdtexturemask")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "ishdtexturemask")
                     {
-                        HDTexture.Add(strArray2[1].ToLower());
+                        HDTexture.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
                     }
-                    if (strArray2[0].ToLower() == "nothdtexturemask")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "nothdtexturemask")
                     {
-                        notHDTexture.Add(strArray2[1].ToLower());
+                        notHDTexture.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
                     }
-                    if (strArray2[0].ToLower() == "atlastolerance")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "atlastolerance")
                     {
                         atlasTolerance = float.Parse(strArray2[1], (IFormatProvider)cultureInfo);
                     }
-                    if (strArray2[0].ToLower() == "ignoretranslation")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "ignoretranslation")
                     {
-                        ignoreList.Add(strArray2[1].ToLower());
+                        ignoreList.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
                     }
-                    if (strArray2[0].ToLower() == "gamemode")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "gamemode")
                     {
-                        Game.Mode = ((strArray2[1].ToLower()));
+                        Game.Mode = ((strArray2[1].ToLower(CultureInfo.InvariantCulture)));
                         if (Game.Mode == "fo3")
                         {
                             Game.Mode = "fnv";
                         }
                         //generateVertexColors = false;
                     }
-                    if (strArray2[0].ToLower() == "dontgeneratevertexcolors")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "dontgeneratevertexcolors")
                     {
                         generateVertexColors = !Boolean.Parse(strArray2[1]);
                     }
-                    if (strArray2[0].ToLower() == "dontfixtangents")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "dontfixtangents")
                     {
                         dontFixTangents = Boolean.Parse(strArray2[1]);
                     }
-                    if (strArray2[0].ToLower() == "dontgeneratetangents")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "dontgeneratetangents")
                     {
                         dontGenerateTangents = Boolean.Parse(strArray2[1]);
                     }
-                    if (strArray2[0].ToLower() == "dontmergeshapes")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "dontmergeshapes")
                     {
                         mergeShapes = !Boolean.Parse(strArray2[1]);
                     }
-                    if (strArray2[0].ToLower() == "removeunseenfaces")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "removeunseenfaces")
                     {
                         removeUnseenFaces = Boolean.Parse(strArray2[1]);
                     }
-                    if (strArray2[0].ToLower() == "ignorewater")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "ignorewater")
                     {
                         ignoreWater = Boolean.Parse(strArray2[1]);
                     }
-                    if (strArray2[0].ToLower() == "usehdflag")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "usehdflag")
                     {
                         useHDFlag = Boolean.Parse(strArray2[1]);
                     }
-                    if (strArray2[0].ToLower() == "useoptimizer")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "useoptimizer")
                     {
                         useOptimizer = Boolean.Parse(strArray2[1]);
                     }
-                    if (strArray2[0].ToLower() == "ignorematerial")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "ignorematerial")
                     {
                         ignoreMaterial = Boolean.Parse(strArray2[1]);
                     }
-                    if (strArray2[0].ToLower() == "globalscale")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "globalscale")
                     {
                         globalScale = float.Parse(strArray2[1], (IFormatProvider)cultureInfo);
                     }
@@ -275,10 +275,10 @@ namespace LODGeneratorCMD
                 return -1;
             }
             /*IniFile ini = new IniFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My games\\skyrim\\skyrim.ini"));
-            if (ini.IniReadValue("Archive", "sResourceArchiveList").ToLower().Contains("aaa"))
+            if (ini.IniReadValue("Archive", "sResourceArchiveList").ToLower(CultureInfo.InvariantCulture).Contains("aaa"))
             {
-                string archiveList1 = ini.IniReadValue("Archive", "sResourceArchiveList").ToLower();
-                string archiveList2 = ini.IniReadValue("Archive", "sResourceArchiveList2").ToLower();
+                string archiveList1 = ini.IniReadValue("Archive", "sResourceArchiveList").ToLower(CultureInfo.InvariantCulture);
+                string archiveList2 = ini.IniReadValue("Archive", "sResourceArchiveList2").ToLower(CultureInfo.InvariantCulture);
                 if (archiveList2.Length > 0)
                 {
                     archiveList1 += "," + archiveList2;
@@ -323,7 +323,7 @@ namespace LODGeneratorCMD
                     for (int index = 0; index < 3; ++index)
                     {
                         string str = strArray2[13 + index];
-                        staticDesc.staticModels[index] = str.ToLower();
+                        staticDesc.staticModels[index] = str.ToLower(CultureInfo.InvariantCulture);
                         if (str.Length > 0 && !File.Exists(gameDir + str))
                         {
                             if (!BSAArchive.FileExists(str))
@@ -348,7 +348,7 @@ namespace LODGeneratorCMD
                     AtlasDesc atlasDesc = new AtlasDesc();
                     if (strArray2.Length >= 8)
                     {
-                        atlasDesc.SourceTexture = strArray2[0].ToLower();
+                        atlasDesc.SourceTexture = strArray2[0].ToLower(CultureInfo.InvariantCulture);
                         int textureWidth = int.Parse(strArray2[1], (IFormatProvider)cultureInfo);
                         int textureHeight = int.Parse(strArray2[2], (IFormatProvider)cultureInfo);
                         int textureX = int.Parse(strArray2[3], (IFormatProvider)cultureInfo);
@@ -359,8 +359,8 @@ namespace LODGeneratorCMD
                         atlasDesc.scaleV = (float) textureHeight / (float)atlasHeight;
                         atlasDesc.posU = (float)textureX / (float) atlasWidth;
                         atlasDesc.posV = (float)textureY / (float) atlasHeight;
-                        atlasDesc.AtlasTexture = strArray2[5].ToLower();
-                        atlasDesc.AtlasTextureN = strArray2[5].ToLower().Replace(".dds", "_n.dds");
+                        atlasDesc.AtlasTexture = strArray2[5].ToLower(CultureInfo.InvariantCulture);
+                        atlasDesc.AtlasTextureN = strArray2[5].ToLower(CultureInfo.InvariantCulture).Replace(".dds", "_n.dds");
                         //theLog.WriteLog(atlasDesc.SourceTexture + "\t" + atlasDesc.AtlasTexture + "\t" + atlasDesc.scaleU + "\t" + atlasDesc.scaleV + "\t" + atlasDesc.posU + "\t" + atlasDesc.posV);
                         AtlasList.Set(atlasDesc.SourceTexture, atlasDesc);
                     }

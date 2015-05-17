@@ -6,6 +6,7 @@ using StringList = System.Collections.Generic.List<string>;
 using System.IO;
 using System.Threading;
 using System.Linq;
+using System.Globalization;
 
 namespace LODGenerator
 {
@@ -210,13 +211,13 @@ namespace LODGenerator
                     {
                         BSLightingShaderProperty lightingShaderProperty = (BSLightingShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
                         BSShaderTextureSet shaderTextureSet = (BSShaderTextureSet)file.GetBlockAtIndex(lightingShaderProperty.GetTextureSet());
-                        strArray[0] = shaderTextureSet.GetTexture(0).ToLower();
-                        strArray[1] = shaderTextureSet.GetTexture(1).ToLower();
+                        strArray[0] = shaderTextureSet.GetTexture(0).ToLower(CultureInfo.InvariantCulture);
+                        strArray[1] = shaderTextureSet.GetTexture(1).ToLower(CultureInfo.InvariantCulture);
                     }
                     else
                     {
                         BSEffectShaderProperty effectShaderProperty = (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        strArray[0] = effectShaderProperty.GetSourceTexture().ToLower();
+                        strArray[0] = effectShaderProperty.GetSourceTexture().ToLower(CultureInfo.InvariantCulture);
                         strArray[1] = "textures\\default_n.dds";
                     }
                 }
@@ -236,8 +237,8 @@ namespace LODGenerator
                     {
                         BSShaderPPLightingProperty lightingShaderProperty = (BSShaderPPLightingProperty)file.GetBlockAtIndex(shape.GetProperty(index));
                         BSShaderTextureSet shaderTextureSet = (BSShaderTextureSet)file.GetBlockAtIndex(lightingShaderProperty.GetTextureSet());
-                        strArray[0] = shaderTextureSet.GetTexture(0).ToLower();
-                        strArray[1] = shaderTextureSet.GetTexture(1).ToLower();
+                        strArray[0] = shaderTextureSet.GetTexture(0).ToLower(CultureInfo.InvariantCulture);
+                        strArray[1] = shaderTextureSet.GetTexture(1).ToLower(CultureInfo.InvariantCulture);
                         break;
                     }
                     if (niProperty.GetType() == typeof(NiTexturingProperty))
@@ -259,17 +260,17 @@ namespace LODGenerator
                             }
                             if (this.skyblivionTexPath)
                             {
-                                str1 = niSourceTexture.GetFileName().ToLower().Replace("textures", "textures\\tes4");
+                                str1 = niSourceTexture.GetFileName().ToLower(CultureInfo.InvariantCulture).Replace("textures", "textures\\tes4");
                                 str2 = str1.Replace(".dds", "_n.dds");
                             }
                             else
                             {
-                                str1 = niSourceTexture.GetFileName().ToLower();
+                                str1 = niSourceTexture.GetFileName().ToLower(CultureInfo.InvariantCulture);
                                 str2 = str1.Replace(".dds", "_n.dds");
                             }
                         }
-                        strArray[0] = str1.ToLower();
-                        strArray[1] = str2.ToLower();
+                        strArray[0] = str1.ToLower(CultureInfo.InvariantCulture);
+                        strArray[1] = str2.ToLower(CultureInfo.InvariantCulture);
                         break;
                     }
                     strArray[0] = "textures\\defaultdiffuse.dds";
@@ -315,7 +316,7 @@ namespace LODGenerator
                 return list;
             int nameIndex = parentNode.GetNameIndex();
             string str = nameIndex != -1 ? file.GetStringAtIndex(nameIndex) : parentNode.GetName();
-            if (str != null && str.ToLower().Contains("editormarker"))
+            if (str != null && str.ToLower(CultureInfo.InvariantCulture).Contains("editormarker"))
                 return list;
             Matrix44 parentTransform1 = parentNode.GetTransform() * parentTransform;
             if (ignoreTransRot.Any(stat.staticModels[level].Contains))
@@ -754,11 +755,11 @@ namespace LODGenerator
             {
                 if ((stat.refFlags & 131072) == 131072)
                 {
-                    if (HDMeshList.Any(stat.staticModels[this.quadIndex].ToLower().Contains))
+                    if (HDMeshList.Any(stat.staticModels[this.quadIndex].ToLower(CultureInfo.InvariantCulture).Contains))
                     {
                         shape1.isHighDetail = true;
                     }
-                    else if (notHDMeshList.Any(stat.staticModels[this.quadIndex].ToLower().Contains))
+                    else if (notHDMeshList.Any(stat.staticModels[this.quadIndex].ToLower(CultureInfo.InvariantCulture).Contains))
                     {
                         shape1.isHighDetail = false;
                     }
@@ -790,7 +791,7 @@ namespace LODGenerator
             }
             else
             {
-                if (useOptimizer && quadLevel != 4 && shape1.textures[0].ToLower().Contains("mountainslab01"))
+                if (useOptimizer && quadLevel != 4 && shape1.textures[0].ToLower(CultureInfo.InvariantCulture).Contains("mountainslab01"))
                 {
                     string[] strArray = new string[2];
                     strArray[0] = "textures\\landscape\\mountains\\mountainslab02.dds";
@@ -1251,7 +1252,7 @@ namespace LODGenerator
             {
                 ShapeDesc shape = new ShapeDesc();
                 shape = shapes[index];
-                string key = shape.textures[0].ToLower();
+                string key = shape.textures[0].ToLower(CultureInfo.InvariantCulture);
                 // use vertex color flag to seperate?
                 // less draw calls more important than reducing a few bytes?
                 // overall it is not even reducing bytes... so no

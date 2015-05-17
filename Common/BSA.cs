@@ -4,6 +4,7 @@ using BSAList = System.Collections.Generic.List<LODGenerator.Common.BSAArchive>;
 using StringList = System.Collections.Generic.List<string>;
 using System.IO;
 using System.IO.Compression;
+using System.Globalization;
 
 namespace LODGenerator.Common
 {
@@ -143,7 +144,7 @@ namespace LODGenerator.Common
                 theLog.WriteLog("Using " + archivepath);
             }
             BSAHeader header;
-            name = archivepath.ToLower();
+            name = archivepath.ToLower(CultureInfo.InvariantCulture);
             FileInfo file = new FileInfo(archivepath);
             BinaryReader binary = new BinaryReader(file.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite), System.Text.Encoding.Default);
             header = new BSAHeader(binary);
@@ -213,7 +214,7 @@ namespace LODGenerator.Common
                     BSAArchiveFileInfo bsaArchiveFileInfo = new BSAArchiveFileInfo(this, (int)bsaFileInfo.offset, bsaFileInfo.size);
                     string filepath = Path.Combine(folderInfo[index].path, bsaFileInfo.path);
                     //theLog.WriteLog(archivepath + " file = " + filepath + " off = " + bsaFileInfo.offset + " size = " + bsaFileInfo.size + " compressed = " + bsaArchiveFileInfo.compressed);
-                    FileList[filepath.ToLower()] = bsaArchiveFileInfo;
+                    FileList[filepath.ToLower(CultureInfo.InvariantCulture)] = bsaArchiveFileInfo;
                 }
             }
             LoadedArchives.Add(this);
@@ -229,12 +230,12 @@ namespace LODGenerator.Common
 
         public static bool FileExists(string path)
         {
-            return FileList.ContainsKey(path.ToLower());
+            return FileList.ContainsKey(path.ToLower(CultureInfo.InvariantCulture));
         }
 
         public static byte[] GetFile(string path)
         {
-            return FileList[path.ToLower()].GetData();
+            return FileList[path.ToLower(CultureInfo.InvariantCulture)].GetData();
         }
     }
 }

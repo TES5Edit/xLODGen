@@ -30,7 +30,10 @@ namespace LODGeneratorCMD
 
         private static int Main(string[] args)
         {
-            LogFile theLog = new LogFile();
+            Dictionary<string, string> cmdArgs = Program.CollectCmdArgs(args);
+            string logFileName = CmdArgs.GetString(cmdArgs, "logfile", Directory.GetCurrentDirectory() + "\\LODGen_log.txt");
+            LogFile theLog = new LogFile(logFileName);
+
             if (Enumerable.Count<string>((IEnumerable<string>)args) < 1)
             {
                 theLog.WriteLog("Nothing to do");
@@ -235,7 +238,6 @@ namespace LODGeneratorCMD
                 }
             }
 
-            Dictionary<string, string> cmdArgs = Program.CollectCmdArgs(args);
             if (CmdArgs.GetBool(cmdArgs, "dontGenerateVertexColors", false))
             {
                 generateVertexColors = false;

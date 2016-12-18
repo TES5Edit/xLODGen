@@ -13,24 +13,34 @@ namespace LODGenerator
         private bool keepRunning;
         private Thread logThread;
 
-        public LogFile()
+        public LogFile(string filename)
         {
             this.keepRunning = true;
+            bool append = true;
+
             try
             {
-                bool append = true;
-                this.logWriter = new StreamWriter(Directory.GetCurrentDirectory() + "\\LODGen_log.txt", append);
+                Directory.CreateDirectory(Path.GetDirectoryName(filename));
+                this.logWriter = new StreamWriter(filename, append);
             }
             catch
             {
-                Console.WriteLine("Can not write to " + Directory.GetCurrentDirectory() + "\\LODGen_log.txt");
-                System.Environment.Exit(403);
+                try
+                {
+                    this.logWriter = new StreamWriter(Directory.GetCurrentDirectory() + "\\LODGen_log.txt", append);
+                }
+                catch
+                {
+                    Console.WriteLine("Can not write to " + Directory.GetCurrentDirectory() + "\\LODGen_log.txt");
+                    System.Environment.Exit(403);
+                }
             }
+
             this.logWriter.WriteLine(this.WriteToScreen("============================================================"));
-            this.logWriter.WriteLine(this.WriteToScreen("Skyrim Object LOD Generator v1.0.0"));
+            this.logWriter.WriteLine(this.WriteToScreen("Skyrim Object LOD Generator v1.0.1"));
             this.logWriter.WriteLine(this.WriteToScreen("Created by Ehamloptiran and Zilav"));
             this.logWriter.WriteLine(this.WriteToScreen("Updated by Sheson\n"));
-            this.logWriter.WriteLine(this.WriteToScreen("Log started at " + DateTime.Now.ToShortTimeString()));
+            this.logWriter.WriteLine(this.WriteToScreen("Log started at " + DateTime.Now.ToLongTimeString()));
             this.lineBuffer = new List<string>();
             this.logThread = new Thread((ParameterizedThreadStart)(state =>
             {
@@ -65,7 +75,7 @@ namespace LODGenerator
             this.keepRunning = false;
             while (this.logThread.IsAlive)
                 Thread.Sleep(100);
-            this.logWriter.WriteLine(this.WriteToScreen("Log ended at " + DateTime.Now.ToShortTimeString()));
+            this.logWriter.WriteLine(this.WriteToScreen("Log ended at " + DateTime.Now.ToLongTimeString()));
             this.logWriter.Close();
         }
 

@@ -257,7 +257,12 @@ namespace LODGenerator
                 return;
             }
 
-            if (!terrain && geometry.uvcoords.Count == 0)
+            if (terrain)
+            {
+                return;
+            }
+
+            if (geometry.uvcoords.Count == 0)
             {
                 logFile.WriteLog("Skipping no UV " + this.staticModel + " " + this.name);
                 geometry = new Geometry();

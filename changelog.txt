@@ -1,4 +1,6 @@
 Changelog
+1.0.1	added support for --logfile "c:\..." command line switch, defaults to current dir \ LODGen_log.txt if not set or error
+
 1.0	added support for dds in export file, it will be used to create 2 flat surfaces for tree LOD
 		uses FlatTextures= for x-width, y-height, z-shift, scale, lighting effect 1, path to normals file
 	added support for AltTextures= replacement texture list (list of 3D names and textures), applied before atlas
@@ -6,6 +8,7 @@ Changelog
 	added BA2 support, GNRL only
 	added export Mode=FO4, see updates to LODGen.pas for new export fields for SCOL data, enable parent form id, replacement textures, etc
 	added export Mode=Merge5 to combine several nif into one
+	added export Mode=convert4 (tes4) and Mode=convert5 (tes5) to atlas the UV of meshes, see convert.txt, miniatlas.txt in bin/Release
 	read more block types typically used for trees to convert to statics
 
 0.9	added material 'PassThru' - works for BSLightingShaderProperty and BSEffectShaderProperty
@@ -15,7 +18,7 @@ Changelog
 		changes all vertex alpha to 1f, since LOD only has alpha on/off at 50%, vertex alpha is applied if SLSF2_LOD_Objects/SLSF2_HD_LOD_Objects are not set
 		Extra Data List and Controllers are ignored
 		keep vertex colors regardless of --dontGenerateVertexColors
-	added alternate texture replacement - see LODGen_alt_tamriel.txt / LODGen_alt_textures_tamriel.txt in  bin/Release
+	added alternate texture replacement - see LODGen_alt_tamriel.txt / LODGen_alt_textures_tamriel.txt in bin/Release
 		applied before atlas
 		Get 3D Index and 3D Name and replacement textures from CK - both 3D Index and 3D Name need to match in nif
 		if source texture has \lod in path the desination must have it too and vice versa

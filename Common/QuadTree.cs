@@ -83,6 +83,10 @@ namespace LODGenerator.Common
                     // z under box
                     return null;
                 }
+                if (isLand && z > quadTreeLeaf.boundingBox.pz2)
+                {
+                    return new List<Triangle>();
+                }
                 return triangles;
             }
             return new List<Triangle>();

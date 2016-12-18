@@ -2,9 +2,11 @@
 using LODGenerator.NifMain;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using StringList = System.Collections.Generic.List<string>;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Linq;
 using System.Globalization;
 
@@ -526,6 +528,7 @@ namespace LODGenerator
             List<Vector3> tangents = new List<Vector3>(shapedesc.geometry.GetTangents());
             List<Vector3> bitangents = new List<Vector3>(shapedesc.geometry.GetBitangents());
             List<UVCoord> uvcoords = new List<UVCoord>(shapedesc.geometry.GetUVCoords());
+
             for (int index = 0; index < vertices.Count; ++index)
             {
                 vertices[index] *= geom.GetScale() * parentScale;
@@ -773,7 +776,8 @@ namespace LODGenerator
 
         private float GetTriangleHeight(List<Vector3> verts, List<Triangle> tris, Vector3 pt)
         {
-            for (int index = 0; index < tris.Count; ++index)
+            float result = float.MinValue;
+            for (int index = 0; index < tris.Count; index++)
             {
                 Triangle triangle = tris[index];
                 float u;
@@ -786,94 +790,129 @@ namespace LODGenerator
                     Vector3 vector3_1 = verts[(int)triangle[0]];
                     Vector3 vector3_2 = verts[(int)triangle[1]];
                     Vector3 vector3_3 = verts[(int)triangle[2]];
-                    return (vector3_2[2] - vector3_1[2]) * v + vector3_1[2] + ((vector3_3[2] - vector3_1[2]) * u + vector3_1[2]) - vector3_1[2];
+                    result = (vector3_2[2] - vector3_1[2]) * v + vector3_1[2] + ((vector3_3[2] - vector3_1[2]) * u + vector3_1[2]) - vector3_1[2];
+                    break;
                 }
             }
-            return float.MinValue;
+            return result;
         }
 
         private void RemoveUnseenFaces(QuadDesc quad, ShapeDesc shapedesc)
         {
             List<Triangle> triangles = shapedesc.geometry.GetTriangles();
             List<Vector3> vertices = shapedesc.geometry.GetVertices();
+            Dictionary<ushort, bool> whatever = new Dictionary<ushort, bool>();
             int count = triangles.Count;
             quad.outValues.totalTriCount += count;
-            int loops = 0;
+            int loops = 1;
             if (this.removeUnderwaterFaces)
             {
-                loops = 1;
+                loops = 0;
             }
-            for (int loop = 0; loop <= loops; loop++)
+            for (int loop = loops; loop < 2; loop++)
             {
                 for (int index = 0; index < triangles.Count; ++index)
                 {
                     QuadDesc quadCurrent = new QuadDesc(true);
-                    List<Triangle> trianglesCompare = new List<Triangle>();
-                    List<Vector3> verticesCompare = new List<Vector3>();
+                    //List<Triangle> trianglesCompare = new List<Triangle>();
+                    //List<Vector3> verticesCompare = new List<Vector3>();
                     bool[] vertexBelow = new bool[3];
                     for (int index1 = 0; index1 < 3; index1++)
                     {
-                        Vector3 vertex = vertices[triangles[index][index1]];
-                        float x = vertex[0];
-                        float y = vertex[1];
-                        int vertexQuadx = quad.x + cellquad(x * quadLevel, southWestX);
-                        int vertexQuady = quad.y + cellquad(y * quadLevel, southWestY);
-                        if (quad.x != vertexQuadx || quad.y != vertexQuady)
+                        ushort tri = triangles[index][index1];
+                        if (whatever.ContainsKey(tri))
                         {
-                            for (int index3 = 0; index3 < this.quadList.Count; ++index3)
+                            vertexBelow[index1] = whatever[tri];
+                            if (!vertexBelow[index1])
                             {
-                                if (vertexQuadx == this.quadList[index3].x && vertexQuady == this.quadList[index3].y)
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            //logFile.WriteLog(shapedesc.name + " - " + triangles[index][index1] + " = " + verticesUnder[triangles[index][index1]]);
+                            Vector3 vertex = vertices[triangles[index][index1]];
+                            float x = vertex[0];
+                            float y = vertex[1];
+                            int vertexQuadx = quad.x + cellquad(x * quadLevel, southWestX);
+                            int vertexQuady = quad.y + cellquad(y * quadLevel, southWestY);
+                            if (quad.x != vertexQuadx || quad.y != vertexQuady)
+                            {
+                                for (int index3 = 0; index3 < this.quadList.Count; ++index3)
                                 {
-                                    quadCurrent = this.quadList[index3];
-                                    x -= (vertexQuadx - quad.x) / quadLevel * 4096;
-                                    y -= (vertexQuady - quad.y) / quadLevel * 4096;
-                                    break;
+                                    if (vertexQuadx == this.quadList[index3].x && vertexQuady == this.quadList[index3].y)
+                                    {
+                                        quadCurrent = this.quadList[index3];
+                                        x -= (vertexQuadx - quad.x) / quadLevel * 4096;
+                                        y -= (vertexQuady - quad.y) / quadLevel * 4096;
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                        else
-                        {
-                            quadCurrent = quad;
-                        }
-                        if (!quadCurrent.hasTerrainVertices)
-                        {
-                            continue;
-                        }
-                        Vector3 vertex1 = new Vector3(x, y, vertex[2]);
-                        List<Triangle> trianglesTerrain = new List<Triangle>();
-                        List<Vector3> verticesTerrain = new List<Vector3>();
-                        if (this.removeUnderwaterFaces && loop == 0)
-                        {
-                            if (quadCurrent.waterQuadTree != null)
+                            else
                             {
-                                trianglesTerrain = quadCurrent.waterQuadTree.entirequad.triangles;
-                                verticesTerrain = quadCurrent.waterQuadTree.vertices;
+                                quadCurrent = quad;
                             }
-                        }
-                        else
-                        {
-                            trianglesTerrain = quadCurrent.terrainQuadTree.GetSegment(vertex1, quadLevel);
-                            verticesTerrain = quadCurrent.terrainQuadTree.vertices;
-                        }
-                        if (trianglesTerrain == null)
-                        {
-                            vertexBelow[index1] = true;
-                        }
-                        else
-                        {
-                            if (trianglesTerrain.Count != 0)
+                            if (!quadCurrent.hasTerrainVertices)
                             {
-                                float num1 = float.MaxValue;
-                                num1 = GetTriangleHeight(verticesTerrain, trianglesTerrain, vertex1);
-                                if (vertex1[2] < num1)
+                                continue;
+                            }
+                            Vector3 vertex1 = new Vector3(x, y, vertex[2]);
+                            List<Triangle> trianglesTerrain = new List<Triangle>();
+                            List<Vector3> verticesTerrain = new List<Vector3>();
+                            if (loop == 0)
+                            {
+                                if (quadCurrent.waterQuadTree != null)
                                 {
-                                    vertexBelow[index1] = true;
+                                    trianglesTerrain = quadCurrent.waterQuadTree.entirequad.triangles;
+                                    verticesTerrain = quadCurrent.waterQuadTree.vertices;
+                                }
+                            }
+                            else
+                            {
+                                trianglesTerrain = quadCurrent.terrainQuadTree.GetSegment(vertex1, quadLevel);
+                                verticesTerrain = quadCurrent.terrainQuadTree.vertices;
+                            }
+                            if (trianglesTerrain == null)
+                            {
+                                vertexBelow[index1] = true;
+                                whatever.Add(tri, true);
+                            }
+                            else
+                            {
+                                if (trianglesTerrain.Count != 0)
+                                {
+                                    float num1 = GetTriangleHeight(verticesTerrain, trianglesTerrain, vertex1);
+                                    if (vertex1[2] < num1)
+                                    {
+                                        vertexBelow[index1] = true;
+                                        whatever.Add(tri, true);
+                                    }
+                                    else
+                                    {
+                                        vertexBelow[index1] = false;
+                                        if (loop == 1)
+                                        {
+                                            whatever.Add(tri, false);
+                                        }
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    if (loop == 1)
+                                    {
+                                        vertexBelow[index1] = false;
+                                        whatever.Add(tri, false);
+                                        break;
+                                    }
                                 }
                             }
                         }
                     }
                     if (vertexBelow[0] && vertexBelow[1] && vertexBelow[2])
                     {
+                        triangles[index] = new Triangle(0, 0, 0);
                         triangles.RemoveAt(index);
                         --index;
                     }
@@ -906,6 +945,7 @@ namespace LODGenerator
                 }
                 return this.IterateNodes(quad, curStat, level, file1, (NiNode)file1.GetBlockAtIndex(0), new Matrix44(true), 1f);
             }
+
             if (curStat.staticModels[level].Contains(".dds"))
             {
                 if (FlatList.Contains(curStat.staticModels[level]))
@@ -1495,7 +1535,9 @@ namespace LODGenerator
                 shaderTextureSet.SetTexture(1, shapeDesc.textures[1]);
                 segmentedTriShape.SetData(file.AddBlock((NiObject)shapeDesc.geometry.ToNiTriShapeData(generateVertexColors)));
                 for (int index = 0; index < 16; ++index)
+                {
                     segmentedTriShape.AddSegment(new BSSegment(0U, (ushort)0));
+                }
                 for (int index = 0; index < shapeDesc.segments.Count; ++index)
                 {
                     BSSegment segmentAtIndex = segmentedTriShape.GetSegmentAtIndex(shapeDesc.segments[index].id);
@@ -1673,7 +1715,7 @@ namespace LODGenerator
                     key = key + "_VC";
                 }
                 if (shape.geometry.HasTangents() && shape.geometry.HasBitangents())
-                { 
+                {
                     key = key + "_TB";
                 }
                 // use material name from list file, Snow/Ash

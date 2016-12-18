@@ -1,9 +1,15 @@
 Changelog
+1.0.3
+	fixed a case of calculating wrong offset for LOD higher levels if origin is not multiple of 4
+	fixed not being able to generate for specific cell if x/y equals -1
+	fixed sometimes not keeping vertex colors in higher LOD levels for passthru
+        trim texture strings
+
 1.0.2
 	fixed not properly assigning null texture replacement
 	print nice error message if some hashing goes wrong
 	use of re-UV function (untiling) for miniatlas before applying world atlas for game mode TES5
-	keep decal shader flag from nif for game mode TES5 - set UseDecalFlag=true in export file
+	keep decal shader flag from source mesh for game mode TES5 - set UseDecalFlag=true in export file
 
 1.0.1	added support for --logfile "c:\..." command line switch, defaults to current dir \ LODGen_log.txt if not set or error
 

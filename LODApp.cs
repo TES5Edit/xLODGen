@@ -86,22 +86,22 @@ namespace LODGenerator
             this.removeUnseenFaces = false;
             this.globalScale = 1f;
             this.eliminateSize = 0.0f;
-            this.lodLevelToGenerate = -1;
+            this.lodLevelToGenerate = Int32.MinValue;
         }
 
         private int cellquad(float pos, int southWest)
         {
             // properly address offset world coordinates to match CK
-            double xoffset = pos - ((southWest % 4) * 4096);
+            double xoffset = pos - ((southWest % this.quadLevel) * 4096);
             int num1 = (int)((double)xoffset / (double)this.quadOffset);
             if ((double)xoffset < 0.0)
             {
                 --num1;
             }
             int num3 = num1 * this.quadLevel;
-            if (southWest % 4 != 0)
+            if (southWest % this.quadLevel != 0)
             {
-                num3 += southWest % 4;
+                num3 += southWest % this.quadLevel;
             }
             return num3;
         }
@@ -888,7 +888,7 @@ namespace LODGenerator
                             Vector3 vertex = vertices[triangles[index][index1]];
                             float x = vertex[0];
                             float y = vertex[1];
-                            int vertexQuadx = quad.x + cellquad(x * quadLevel, southWestX);
+                            /*int vertexQuadx = quad.x + cellquad(x * quadLevel, southWestX);
                             int vertexQuady = quad.y + cellquad(y * quadLevel, southWestY);
                             if (quad.x != vertexQuadx || quad.y != vertexQuady)
                             {
@@ -903,7 +903,7 @@ namespace LODGenerator
                                     }
                                 }
                             }
-                            else
+                            else*/
                             {
                                 quadCurrent = quad;
                             }
@@ -1859,7 +1859,7 @@ namespace LODGenerator
                     List<ShapeDesc> list = keyValuePair.Value;
                     ShapeDesc baseShapeDesc = new ShapeDesc(list[0]);
                     bool hasVertexColors = false;
-                    if ((this.quadLevel == 4 || baseShapeDesc.isHighDetail) && baseShapeDesc.hasVertexColor && !baseShapeDesc.allWhite)
+                    if ((this.quadLevel == 4 || baseShapeDesc.isHighDetail || baseShapeDesc.isPassThru) && baseShapeDesc.hasVertexColor && !baseShapeDesc.allWhite)
                     {
                         hasVertexColors = true;
                     }
@@ -2003,6 +2003,7 @@ namespace LODGenerator
             }
             else
             {
+                //logFile.WriteLog("Loading " + str);
                 NiFile niFile = new NiFile();
                 niFile.Read(this.gameDir, str, logFile);
                 BSMultiBoundNode bsMultiBoundNode1 = (BSMultiBoundNode)niFile.GetBlockAtIndex(0);
@@ -2227,7 +2228,7 @@ namespace LODGenerator
                     return;
                 }
             }
-            if (this.lodLevelToGenerate != -1 && this.lodLevelToGenerate != this.quadLevel)
+            if (this.lodLevelToGenerate != Int32.MinValue && this.lodLevelToGenerate != this.quadLevel)
             {
                 return;
             }
@@ -2250,7 +2251,7 @@ namespace LODGenerator
             for (int index1 = 0; index1 < list1.Count; ++index1)
             {
                 QuadDesc quadDesc = list1[index1];
-                if ((this.lodX == -1 || this.lodX == quadDesc.x) && (this.lodY == -1 || this.lodY == quadDesc.y))
+                if ((this.lodX == Int32.MinValue || this.lodX == quadDesc.x) && (this.lodY == Int32.MinValue || this.lodY == quadDesc.y))
                 {
                     while (list2.Count == 8)
                     {

@@ -629,6 +629,7 @@ namespace LODGenerator
 
             for (int index = 0; index < this.textures.Length; index++)
             {
+                this.textures[index] = this.textures[index].Trim();
                 if (this.textures[index].Contains(".dds") && !this.textures[index].Contains("textures\\"))
                 {
                     this.textures[index] = Path.Combine("textures\\", this.textures[index]);

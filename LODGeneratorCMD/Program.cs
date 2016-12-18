@@ -280,9 +280,9 @@ namespace LODGeneratorCMD
                 globalScale = CmdArgs.GetFloat(cmdArgs, "globalScale", 1f);
             }
 
-            int int1 = CmdArgs.GetInt(cmdArgs, "lodLevel", -1);
-            int int2 = CmdArgs.GetInt(cmdArgs, "x", -1);
-            int int3 = CmdArgs.GetInt(cmdArgs, "y", -1);
+            int int1 = CmdArgs.GetInt(cmdArgs, "lodLevel", Int32.MinValue);
+            int int2 = CmdArgs.GetInt(cmdArgs, "x", Int32.MinValue);
+            int int3 = CmdArgs.GetInt(cmdArgs, "y", Int32.MinValue);
             theLog.WriteLog("Game Mode: " + Game.Mode.ToUpper());
             theLog.WriteLog("Fix Tangents: " + (!dontFixTangents ? "True" : "False"));
             theLog.WriteLog("Generate Tangents: " + (!dontGenerateTangents ? "True" : "False"));
@@ -299,12 +299,12 @@ namespace LODGeneratorCMD
             theLog.WriteLog("Use Backlight Power: " + (useBacklightPower ? "True" : "False"));
             theLog.WriteLog("Use Decal Flag: " + (useDecalFlag ? "True" : "False"));
             theLog.WriteLog("Global scale: " + string.Format("{0:0.00}", globalScale));
-            theLog.WriteLog("Specific level: " + (int1 != -1 ? int1.ToString() : "No"));
-            if (int2 != -1 && int3 == -1)
+            theLog.WriteLog("Specific level: " + (int1 != Int32.MinValue ? int1.ToString() : "No"));
+            if (int2 != Int32.MinValue && int3 == Int32.MinValue)
                 theLog.WriteLog("Specific quad: [" + (object)int2.ToString() + ", X]");
-            else if (int2 == -1 && int3 != -1)
+            else if (int2 == Int32.MinValue && int3 != Int32.MinValue)
                 theLog.WriteLog("Specific quad: [X, " + (object)int3.ToString() + "]");
-            else if (int2 != -1 && int3 != -1)
+            else if (int2 != Int32.MinValue && int3 != Int32.MinValue)
                 theLog.WriteLog("Specific quad: [" + (object)int2.ToString() + ", " + (string)(object)int3.ToString() + "]");
             else
                 theLog.WriteLog("Specific quad: No");
@@ -661,9 +661,9 @@ namespace LODGeneratorCMD
                         useFadeNode = CmdArgs.GetBool(cmdArgs, "useFadeNode", false),
                         removeUnseenFaces = removeUnseenFaces,
                         globalScale = globalScale,
-                        lodLevelToGenerate = CmdArgs.GetInt(cmdArgs, "lodLevel", -1),
-                        lodX = CmdArgs.GetInt(cmdArgs, "x", -1),
-                        lodY = CmdArgs.GetInt(cmdArgs, "y", -1),
+                        lodLevelToGenerate = CmdArgs.GetInt(cmdArgs, "lodLevel", Int32.MinValue),
+                        lodX = CmdArgs.GetInt(cmdArgs, "x", Int32.MinValue),
+                        lodY = CmdArgs.GetInt(cmdArgs, "y", Int32.MinValue),
                         southWestX = (int)southWestX,
                         southWestY = (int)southWestY,
                         atlasToleranceMin = Game.atlasToleranceMin,

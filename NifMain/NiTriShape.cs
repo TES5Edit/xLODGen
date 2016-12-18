@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
+using System;
 using System.IO;
 
 namespace LODGenerator.NifMain
 {
+    [Serializable]
     public class NiTriShape : NiTriBasedGeom
     {
         public NiTriShape()

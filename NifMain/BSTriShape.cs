@@ -5,6 +5,7 @@ using System.IO;
 
 namespace LODGenerator.NifMain
 {
+    [Serializable]
     public class BSTriShape : NiTriBasedGeom
     {
         protected byte vertexFlag1;

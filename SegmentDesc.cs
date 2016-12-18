@@ -1,5 +1,8 @@
-﻿namespace LODGenerator
+﻿using System;
+
+namespace LODGenerator
 {
+    [Serializable]
     public class SegmentDesc
     {
         public int id;

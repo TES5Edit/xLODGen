@@ -2,6 +2,7 @@
 
 namespace LODGenerator.Common
 {
+    [Serializable]
     public class Matrix33
     {
         private float[] m1;

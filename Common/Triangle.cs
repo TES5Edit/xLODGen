@@ -2,6 +2,7 @@
 
 namespace LODGenerator.Common
 {
+    [Serializable]
     public class Triangle
     {
         private ushort v1;

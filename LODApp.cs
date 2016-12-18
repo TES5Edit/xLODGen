@@ -34,6 +34,7 @@ namespace LODGenerator
         public bool alphaDoublesided;
         public bool useAlphaThreshold;
         public bool useBacklightPower;
+        public bool useDecalFlag;
         public bool dontGroup;
         public bool skyblivionTexPath;
         public float globalScale;
@@ -346,7 +347,7 @@ namespace LODGenerator
         private ShapeDesc GroupShape(QuadDesc quad, StaticDesc stat, NiFile file, NiTriBasedGeom geom, Matrix44 parentTransform, float parentScale, int numGeom)
         {
             BBox bbox = new BBox(float.MaxValue, float.MinValue, float.MaxValue, float.MinValue, float.MaxValue, float.MinValue);
-            ShapeDesc shapedesc = new ShapeDesc(this.gameDir, file, geom, stat, this.quadIndex, PassThruMeshList, skyblivionTexPath, useOptimizer, fixTangents, false, verbose, this.logFile);
+            ShapeDesc shapedesc = new ShapeDesc(this.gameDir, file, geom, stat, this.quadIndex, PassThruMeshList, skyblivionTexPath, useOptimizer, fixTangents, useDecalFlag, false, verbose, this.logFile);
 
             parentTransform *= stat.transrot;
             parentScale *= stat.transscale;
@@ -407,28 +408,37 @@ namespace LODGenerator
                     }
                 }
             }
+            if (shapedesc.name != "")
+            {
+                string key = (stat.refID + "_" + numGeom + "_" + shapedesc.name).ToLower(CultureInfo.InvariantCulture);
+                if (AltTextureList.Contains(key))
+                {
+                    AltTextureDesc altTexDesc = new AltTextureDesc();
+                    altTexDesc = AltTextureList.Get(key);
+                    if ((shapedesc.textures[0].Contains("\\lod") && altTexDesc.textures[0].Contains("\\lod")) || ((!shapedesc.textures[0].Contains("\\lod") && !altTexDesc.textures[0].Contains("\\lod"))))
+                    {
+                        string s = "";
+                        for (int index = 0; index < altTexDesc.textures.Count(); index++)
+                        {
+                            shapedesc.textures[index] = altTexDesc.textures[index];
+                            s += altTexDesc.textures[index];
+                        }
+                        if (s == "")
+                        {
+                            return (ShapeDesc)null;
+                        }
+                    }
+                }
+            }
             if (shapedesc.isPassThru)
             {
                 shapedesc.hasVertexColor = shapedesc.geometry.HasVertexColors();
             }
             else
             {
-                if (shapedesc.name != "")
-                {
-                    string key = (stat.refID + "_" + numGeom + "_" + shapedesc.name).ToLower(CultureInfo.InvariantCulture);
-                    if (AltTextureList.Contains(key))
-                    {
-                        AltTextureDesc altTexDesc = new AltTextureDesc();
-                        altTexDesc = AltTextureList.Get(key);
-                        if ((shapedesc.textures[0].Contains("\\lod") && altTexDesc.textures[0].Contains("\\lod")) || ((!shapedesc.textures[0].Contains("\\lod") && !altTexDesc.textures[0].Contains("\\lod"))))
-                        {
-                            for (int index = 0; index < altTexDesc.textures.Count(); index++)
-                            {
-                                shapedesc.textures[index] = altTexDesc.textures[index];
-                            }
-                        }
-                    }
-                }
+                //shapedesc.geometry = shapedesc.geometry.ReUV(shapedesc, shapedesc.textures[0], logFile, verbose);
+                //shapedesc = shapedesc.ReUV(logFile, verbose);
+
                 if (AtlasList.Contains(shapedesc.textures[0]))
                 {
                     if (this.UVAtlas(shapedesc.geometry, shapedesc.textures[0], stat))
@@ -500,7 +510,111 @@ namespace LODGenerator
         private ShapeDesc TransformShape(QuadDesc quad, StaticDesc stat, NiFile file, NiTriBasedGeom geom, Matrix44 parentTransform, float parentScale, int numGeom)
         {
             BBox bbox = new BBox(float.MaxValue, float.MinValue, float.MaxValue, float.MinValue, float.MaxValue, float.MinValue);
-            ShapeDesc shapedesc = new ShapeDesc(this.gameDir, file, geom, stat, this.quadIndex, PassThruMeshList, skyblivionTexPath, useOptimizer, fixTangents, false, verbose, this.logFile);
+            ShapeDesc shapedesc = new ShapeDesc(this.gameDir, file, geom, stat, this.quadIndex, PassThruMeshList, skyblivionTexPath, useOptimizer, fixTangents, useDecalFlag, false, verbose, this.logFile);
+
+            /*ShapeDesc shapedesc;
+            //try
+            {
+                string shapekey = stat.staticModels[this.quadIndex] + "_" + Utils.GetHash(Utils.ObjectToByteArray(geom));
+                if (!ShapeList.Contains(shapekey))
+                {
+                    shapedesc = new ShapeDesc(this.gameDir, file, geom, stat, this.quadIndex, PassThruMeshList, skyblivionTexPath, useOptimizer, fixTangents, false, verbose, this.logFile);
+                    ShapeList.Set(shapekey, shapedesc.Copy());
+                }
+                else
+                {
+                    shapedesc = (ShapeList.Get(shapekey).Copy());
+                }
+            }
+            //catch
+            //{
+            //    logFile.WriteLog("Could not create key for " + stat.staticModels[this.quadIndex]);
+            //    shapedesc = new ShapeDesc(this.gameDir, file, geom, stat, this.quadIndex, PassThruMeshList, skyblivionTexPath, useOptimizer, fixTangents, false, verbose, this.logFile);
+            //}
+            */
+
+            if (shapedesc.name != "")
+            {
+                string key = (stat.refID + "_" + numGeom + "_" + shapedesc.name).ToLower(CultureInfo.InvariantCulture);
+                if (AltTextureList.Contains(key))
+                {
+                    AltTextureDesc altTexDesc = new AltTextureDesc();
+                    altTexDesc = AltTextureList.Get(key);
+                    if ((shapedesc.textures[0].Contains("\\lod") && altTexDesc.textures[0].Contains("\\lod")) || ((!shapedesc.textures[0].Contains("\\lod") && !altTexDesc.textures[0].Contains("\\lod"))))
+                    {
+                        string s = "";
+                        for (int index = 0; index < altTexDesc.textures.Count(); index++)
+                        {
+                            shapedesc.textures[index] = altTexDesc.textures[index];
+                            s += altTexDesc.textures[index];
+                        }
+                        if (s == "")
+                        {
+                            return (ShapeDesc)null;
+                        }
+                    }
+                }
+            }
+
+            if (AtlasList.Contains(shapedesc.textures[0]))
+            {
+                bool ok = false;
+                for (int index = 0; index < shapedesc.textures.Count(); index++)
+                {
+                    if (Game.Mode == "tes5" || Game.Mode == "fo4")
+                    {
+                        if (Game.Mode != "fo4" && (shapedesc.textures[index] == "" || shapedesc.textures[index] == shapedesc.textures[0] || shapedesc.textures[index] == shapedesc.textures[1]))
+                        {
+                            ok = true;
+                        }
+                        else if (Game.Mode == "fo4" && (shapedesc.textures[index] == "" || shapedesc.textures[index] == shapedesc.textures[0] || shapedesc.textures[index] == shapedesc.textures[1] || shapedesc.textures[index] == shapedesc.textures[7]))
+                        {
+                            ok = true;
+                        }
+                        else
+                        {
+                            ok = false;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        ok = true;
+                    }
+                }
+
+                if (Game.Mode == "tes5")
+                {
+                    shapedesc = shapedesc.ReUV(logFile, verbose);
+                    if (!AtlasList.Contains(shapedesc.textures[0]))
+                    {
+                        ok = false;
+                    }
+                }
+
+                if (ok && this.UVAtlas(shapedesc.geometry, shapedesc.textures[0], stat))
+                {
+                    string[] strArray = new string[10] { "", "", "", "", "", "", "", "", "", "" };
+                    for (int index = 0; index < shapedesc.textures.Count(); index++)
+                    {
+                        if (shapedesc.textures[index] == shapedesc.textures[0])
+                        {
+                            strArray[index] = AtlasList.Get(shapedesc.textures[0]).AtlasTexture;
+                        }
+                        if (shapedesc.textures[index] == shapedesc.textures[1])
+                        {
+                            strArray[index] = AtlasList.Get(shapedesc.textures[0]).AtlasTextureN;
+                        }
+                        if (Game.Mode == "fo4" && shapedesc.textures[index] == shapedesc.textures[7])
+                        {
+                            strArray[index] = AtlasList.Get(shapedesc.textures[0]).AtlasTextureS;
+                        }
+                    }
+                    shapedesc.textures = strArray;
+                    shapedesc.TextureClampMode = 0U;
+                    shapedesc.isHighDetail = false;
+                }
+            }
 
             if (verbose && !shapedesc.geometry.HasVertexColors() && shapedesc.hasVertexColor)
             {
@@ -567,6 +681,14 @@ namespace LODGenerator
             {
                 shapedesc.geometry.SetNormals(normals);
             }
+            //if (shapedesc.geometry.HasTangents())
+            //{
+            //    shapedesc.geometry.SetTangents(tangents);
+            //}
+            //if (shapedesc.geometry.HasBitangents())
+            //{
+            //    shapedesc.geometry.SetBitangents(bitangents);
+            //}
 
             // relative x, y for segment
             shapedesc.x = _x;
@@ -595,74 +717,6 @@ namespace LODGenerator
                     {
                         shapedesc.isHighDetail = true;
                     }
-                }
-            }
-
-            if (shapedesc.name != "")
-            {
-                string key = (stat.refID + "_" + numGeom + "_" + shapedesc.name).ToLower(CultureInfo.InvariantCulture);
-                if (AltTextureList.Contains(key))
-                {
-                    AltTextureDesc altTexDesc = new AltTextureDesc();
-                    altTexDesc = AltTextureList.Get(key);
-                    if ((shapedesc.textures[0].Contains("\\lod") && altTexDesc.textures[0].Contains("\\lod")) || ((!shapedesc.textures[0].Contains("\\lod") && !altTexDesc.textures[0].Contains("\\lod"))))
-                    {
-                        for (int index = 0; index < altTexDesc.textures.Count(); index++)
-                        {
-                            shapedesc.textures[index] = altTexDesc.textures[index];
-                        }
-                    }
-                }
-            }
-
-            if (AtlasList.Contains(shapedesc.textures[0]))
-            {
-                bool ok = false;
-                for (int index = 0; index < shapedesc.textures.Count(); index++)
-                {
-                    if (Game.Mode == "tes5" || Game.Mode == "fo4")
-                    {
-                        if (Game.Mode != "fo4" && (shapedesc.textures[index] == "" || shapedesc.textures[index] == shapedesc.textures[0] || shapedesc.textures[index] == shapedesc.textures[1]))
-                        {
-                            ok = true;
-                        }
-                        else if (Game.Mode == "fo4" && (shapedesc.textures[index] == "" || shapedesc.textures[index] == shapedesc.textures[0] || shapedesc.textures[index] == shapedesc.textures[1] || shapedesc.textures[index] == shapedesc.textures[7]))
-                        {
-                            ok = true;
-                        }
-                        else
-                        {
-                            ok = false;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        ok = true;
-                    }
-                }
-
-                if (ok && this.UVAtlas(shapedesc.geometry, shapedesc.textures[0], stat))
-                {
-                    string[] strArray = new string[10] { "", "", "", "", "", "", "", "", "", "" };
-                    for (int index = 0; index < shapedesc.textures.Count(); index++)
-                    {
-                        if (shapedesc.textures[index] == shapedesc.textures[0])
-                        {
-                            strArray[index] = AtlasList.Get(shapedesc.textures[0]).AtlasTexture;
-                        }
-                        if (shapedesc.textures[index] == shapedesc.textures[1])
-                        {
-                            strArray[index] = AtlasList.Get(shapedesc.textures[0]).AtlasTextureN;
-                        }
-                        if (Game.Mode == "fo4" && shapedesc.textures[index] == shapedesc.textures[7])
-                        {
-                            strArray[index] = AtlasList.Get(shapedesc.textures[0]).AtlasTextureS;
-                        }
-                    }
-                    shapedesc.textures = strArray;
-                    shapedesc.TextureClampMode = 0U;
-                    shapedesc.isHighDetail = false;
                 }
             }
 
@@ -1065,6 +1119,7 @@ namespace LODGenerator
         {
             foreach (ShapeDesc shapeDesc in shapes)
             {
+                //logFile.WriteLog("shape " + shapeDesc.staticModel + " = " + shapeDesc.name + " = " + shapeDesc.textures[0]);
                 BSMultiBoundNode node = new BSMultiBoundNode();
                 rootNode.AddChild(file.AddBlock((NiObject)node));
                 BSSegmentedTriShape segmentedTriShape = new BSSegmentedTriShape();
@@ -1227,29 +1282,38 @@ namespace LODGenerator
                     // SLSF1_ZBuffer_Test
                     uint num1 = 2147483648U;
                     // SLSF2_ZBuffer_Write
-                    uint num3 = 1U;
+                    uint num2 = 1U;
+                    if (useDecalFlag && shapeDesc.isDecal)
+                    {
+                        // SLSF1_Decal
+                        num1 |= 67108864U;
+                        // SLSF1_Dynamic_Decal
+                        num1 |= 134217728U;
+                        // SLSF2_No_Fade
+                        num2 |= 8U;
+                    }
                     if (shapeDesc.hasVertexColor)
                     {
                         // SLSF2_Vertex_Colors
-                        num3 |= 32U;
+                        num2 |= 32U;
                     }
                     if (shapeDesc.isDoubleSided || (this.alphaDoublesided && shapeDesc.isAlpha))
                     {
                         // SLSF2_Double_Sided
-                        num3 |= 16U;
+                        num2 |= 16U;
                     }
                     if (shapeDesc.isHighDetail && (this.quadLevel == 4 || this.useHDFlag))
                     {
                         // SLSF2_HD_LOD_Objects
-                        num3 |= 2147483648U;
+                        num2 |= 2147483648U;
                     }
                     else
                     {
                         // SLSF2_LOD_Objects - doesn't seem to be required!? If omitted LOD can use specular, vertex alpha on/off
-                        num3 |= 4U;
+                        num2 |= 4U;
                     }
                     lightingShaderProperty.SetShaderFlags1(num1);
-                    lightingShaderProperty.SetShaderFlags2(num3);
+                    lightingShaderProperty.SetShaderFlags2(num2);
                 }
                 this.GenerateMultibound(file, node, quad, shapeDesc.boundingBox);
             }
@@ -1732,6 +1796,10 @@ namespace LODGenerator
                 {
                     key = key + "_HD";
                 }
+                if (Game.Mode == "tes5" && useDecalFlag && shape.isDecal)
+                {
+                    key = key + "_DC";
+                }
                 // double-sided
                 if (shape.isDoubleSided || (this.alphaDoublesided && shape.isAlpha))
                 {
@@ -1948,7 +2016,7 @@ namespace LODGenerator
                         //NiTriShape niTriShape = (NiTriShape)niFile.GetBlockAtIndex(bsMultiBoundNode1.GetChildAtIndex(0));
                         if (geom != null)
                         {
-                            ShapeDesc shapedesc = new ShapeDesc(this.gameDir, niFile, geom, new StaticDesc(), this.quadIndex, PassThruMeshList, skyblivionTexPath, false, false, true, verbose, this.logFile);
+                            ShapeDesc shapedesc = new ShapeDesc(this.gameDir, niFile, geom, new StaticDesc(), this.quadIndex, PassThruMeshList, skyblivionTexPath, false, false, false, true, verbose, this.logFile);
                             Vector3 vector3_1 = bsMultiBoundAabb1.GetPosition() / 4;
                             Vector3 vector3_2 = bsMultiBoundAabb1.GetExtent() / 4;
                             boundingBox.Set(vector3_1[0] - vector3_2[0], vector3_1[0] + vector3_2[0], vector3_1[1] - vector3_2[1], vector3_1[1] + vector3_2[1], vector3_1[2] - vector3_2[2], vector3_1[2] + vector3_2[2]);
@@ -1998,7 +2066,7 @@ namespace LODGenerator
                                 NiTriBasedGeom geom = (NiTriBasedGeom)niFile.GetBlockAtIndex(bsMultiBoundNode2.GetChildAtIndex(index));
                                 if (geom != null)
                                 {
-                                    ShapeDesc shapedesc = new ShapeDesc(this.gameDir, niFile, geom, new StaticDesc(), this.quadIndex, PassThruMeshList, skyblivionTexPath, false, false, true, verbose, this.logFile);
+                                    ShapeDesc shapedesc = new ShapeDesc(this.gameDir, niFile, geom, new StaticDesc(), this.quadIndex, PassThruMeshList, skyblivionTexPath, false, false, false, true, verbose, this.logFile);
                                     if (index == 0)
                                     {
                                         shapecombined = shapedesc;
@@ -2176,6 +2244,7 @@ namespace LODGenerator
                     }
                 }
             }
+            //list1.Sort((x, y) => x.statics.Count().CompareTo(y.statics.Count()));
             this.quadList = list1;
             List<Thread> list2 = new List<Thread>();
             for (int index1 = 0; index1 < list1.Count; ++index1)

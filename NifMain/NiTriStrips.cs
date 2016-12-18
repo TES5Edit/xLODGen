@@ -1,7 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace LODGenerator.NifMain
 {
+    [Serializable]
     public class NiTriStrips : NiTriBasedGeom
     {
         public override void Read(NiHeader header, BinaryReader reader)

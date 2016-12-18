@@ -83,6 +83,7 @@ namespace LODGeneratorCMD
             bool alphaDoubleSided = false;
             bool useAlphaThreshold = false;
             bool useBacklightPower = false;
+            bool useDecalFlag = false;
             bool dontGroup = true;
             float globalScale = 1f;
             while (!streamReader.EndOfStream)
@@ -223,6 +224,10 @@ namespace LODGeneratorCMD
                     {
                         useBacklightPower = Boolean.Parse(strArray2[1]);
                     }
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "usedecalflag")
+                    {
+                        useDecalFlag = Boolean.Parse(strArray2[1]);
+                    }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "dontgroup")
                     {
                         dontGroup = Boolean.Parse(strArray2[1]);
@@ -292,6 +297,7 @@ namespace LODGeneratorCMD
             theLog.WriteLog("Alpha DoubleSided: " + (alphaDoubleSided ? "True" : "False"));
             theLog.WriteLog("Use Alpha Threshold: " + (useAlphaThreshold ? "True" : "False"));
             theLog.WriteLog("Use Backlight Power: " + (useBacklightPower ? "True" : "False"));
+            theLog.WriteLog("Use Decal Flag: " + (useDecalFlag ? "True" : "False"));
             theLog.WriteLog("Global scale: " + string.Format("{0:0.00}", globalScale));
             theLog.WriteLog("Specific level: " + (int1 != -1 ? int1.ToString() : "No"));
             if (int2 != -1 && int3 == -1)
@@ -443,6 +449,7 @@ namespace LODGeneratorCMD
                     statics.Add(staticDesc);
                 }
             }
+            statics.Reverse();
             streamReader.Close();
             if (!File.Exists(uvfile))
             {
@@ -472,8 +479,13 @@ namespace LODGeneratorCMD
                             float scaleV = 1f;
                             if (strArray2.Length >= 10)
                             {
+                                atlasDesc.miniatlas = true;
                                 scaleU = float.Parse(strArray2[8], CultureInfo.InvariantCulture);
                                 scaleV = float.Parse(strArray2[9], CultureInfo.InvariantCulture);
+                            }
+                            else
+                            {
+                                atlasDesc.miniatlas = false;
                             }
                             atlasDesc.scaleU = (float)textureWidth / atlasWidth * scaleU;
                             atlasDesc.scaleV = (float)textureHeight / atlasHeight * scaleV;
@@ -504,6 +516,10 @@ namespace LODGeneratorCMD
                             theLog.Close();
                             System.Environment.Exit(1062);
                         }
+                        //if (AtlasList.Contains(atlasDesc.SourceTexture) && AtlasList.Get(atlasDesc.SourceTexture).miniatlas)
+                        //{
+                        //    atlasDesc.SourceTexture = AtlasList.Get(atlasDesc.SourceTexture).AtlasTexture;
+                        //}
                         if (AtlasList.Contains(atlasDesc.SourceTexture))
                         {
                             theLog.WriteLog("Texture name already defined in atlas file " + atlasDesc.SourceTexture);
@@ -602,13 +618,13 @@ namespace LODGeneratorCMD
                 while (!streamReader.EndOfStream)
                 {
                     string[] strArray2 = streamReader.ReadLine().ToLower(CultureInfo.InvariantCulture).Split('\t');
-                    AltTextureDesc altTexDesc = new AltTextureDesc();
                     if (strArray2.Length > 0)
                     {
                         for (int index = 1; index < strArray2.Length; index++)
                         {
                             string[] strArray3 = strArray2[index].Split('=');
                             string key = strArray2[0] + "_" + strArray3[0] + "_" + strArray3[1];
+                            AltTextureDesc altTexDesc = new AltTextureDesc();
                             altTexDesc.textures = strArray3[2].Split(',');
                             if (!AltTextureList.Contains(key))
                             {
@@ -657,6 +673,7 @@ namespace LODGeneratorCMD
                         alphaDoublesided = alphaDoubleSided,
                         useAlphaThreshold = useAlphaThreshold,
                         useBacklightPower = useBacklightPower,
+                        useDecalFlag = useDecalFlag,
                         dontGroup = dontGroup,
                         skyblivionTexPath = CmdArgs.GetBool(cmdArgs, "skyblivionTexPath", false),
                         ignoreTransRot = ignoreList,
@@ -687,7 +704,7 @@ namespace LODGeneratorCMD
                 }
                 Thread.Sleep(100);
             }
-            if (Game.Mode == "convert4" || Game.Mode == "convert5")
+            //if (Game.Mode == "convert4" || Game.Mode == "convert5")
             {
                 AtlasList.WriteStats(theLog);
             }

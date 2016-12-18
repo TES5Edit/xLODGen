@@ -1,7 +1,9 @@
 ﻿using LODGenerator.Common;
+using System;
 
 namespace LODGenerator
 {
+    [Serializable]
     public struct BBox
     {
         public float px1;

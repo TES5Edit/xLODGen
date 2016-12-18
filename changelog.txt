@@ -1,4 +1,10 @@
 Changelog
+1.0.2
+	fixed not properly assigning null texture replacement
+	print nice error message if some hashing goes wrong
+	use of re-UV function (untiling) for miniatlas before applying world atlas for game mode TES5
+	keep decal shader flag from nif for game mode TES5 - set UseDecalFlag=true in export file
+
 1.0.1	added support for --logfile "c:\..." command line switch, defaults to current dir \ LODGen_log.txt if not set or error
 
 1.0	added support for dds in export file, it will be used to create 2 flat surfaces for tree LOD

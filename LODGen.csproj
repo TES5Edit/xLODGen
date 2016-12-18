@@ -70,6 +70,7 @@
     <Compile Include="AltTextureDesc.cs" />
     <Compile Include="BGSMFile.cs" />
     <Compile Include="Common\BSVertexData.cs" />
+    <Compile Include="Common\ObjectExtensions.cs" />
     <Compile Include="DelaunayTriangulator\Hull.cs" />
     <Compile Include="DelaunayTriangulator\Set.cs" />
     <Compile Include="DelaunayTriangulator\Triad.cs" />

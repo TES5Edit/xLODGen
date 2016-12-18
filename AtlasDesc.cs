@@ -22,6 +22,7 @@ namespace LODGenerator
         public UInt64 after;
         public float averageU;
         public float averageV;
+        public bool miniatlas;
     }
 
     static class AtlasList

@@ -384,7 +384,7 @@ namespace LODGenerator
 
         public void Write(string fileName, LogFile logFile)
         {
-            //try
+            try
             {
                 BinaryWriter writer = new BinaryWriter((Stream)new FileStream(fileName, FileMode.Create));
                 this.header.Update(header, this.blocks);
@@ -404,13 +404,13 @@ namespace LODGenerator
                 writer.Write(0);
                 writer.Close();
             }
-            /*catch (Exception ex)
+            catch (Exception ex)
             {
                 logFile.WriteLog("Error writing " + fileName + " " + ex.Message);
                 logFile.WriteLog("In case Mod Organizer is used, set output path outside of game and MO virtual file system directory");
                 logFile.Close();
                 System.Environment.Exit(502);
-            }*/
+            }
         }
 
         public void AddBlockReference(int value)

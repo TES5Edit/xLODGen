@@ -1,5 +1,8 @@
-﻿namespace LODGenerator.Common
+﻿using System;
+
+namespace LODGenerator.Common
 {
+    [Serializable]
     public class Color3
     {
         private float r;

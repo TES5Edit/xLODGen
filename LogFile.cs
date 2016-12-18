@@ -25,7 +25,7 @@ namespace LODGenerator
                 System.Environment.Exit(403);
             }
             this.logWriter.WriteLine(this.WriteToScreen("============================================================"));
-            this.logWriter.WriteLine(this.WriteToScreen("Skyrim Object LOD Generator v0.8"));
+            this.logWriter.WriteLine(this.WriteToScreen("Skyrim Object LOD Generator v0.9"));
             this.logWriter.WriteLine(this.WriteToScreen("Created by Ehamloptiran and Zilav"));
             this.logWriter.WriteLine(this.WriteToScreen("Updated by Sheson\n"));
             this.logWriter.WriteLine(this.WriteToScreen("Log started at " + DateTime.Now.ToShortTimeString()));

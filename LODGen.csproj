@@ -54,6 +54,7 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AltTextureDesc.cs" />
     <Compile Include="AtlasDesc.cs" />
     <Compile Include="Common\BSA.cs" />
     <Compile Include="Common\Ini.cs" />

@@ -3,7 +3,7 @@
     public struct StaticDesc
     {
         public string refID;
-        public int staticFlags;
+        public int refFlags;
         public float x;
         public float y;
         public float z;
@@ -12,7 +12,7 @@
         public float rotZ;
         public float scale;
         public string staticName;
-        public int refFlags;
+        public int staticFlags;
         public string materialName;
         public string staticFullModel;
         public string[] staticModels;

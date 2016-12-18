@@ -1,5 +1,8 @@
-﻿namespace LODGenerator.Common
+﻿using System;
+
+namespace LODGenerator.Common
 {
+    [Serializable]
     public class UVCoord
     {
         private float u;

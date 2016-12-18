@@ -1,5 +1,8 @@
-﻿namespace LODGenerator.Common
+﻿using System;
+
+namespace LODGenerator.Common
 {
+    [Serializable]
     public class Vector4
     {
         private float x;

@@ -165,11 +165,9 @@ namespace LODGenerator
             {
                 try
                 {
-                    //logFile.Console.WriteLine(" reading " + fileName + " from BSA");
                     byte[] newfile = BSAArchive.GetFile(fileName);
                     int length = newfile.Length;
                     memoryStream.Write(newfile, 0, length);
-                    //logFile.WriteLog(" read " + fileName + " " + length + " from BSA");
                 }
                 catch (Exception ex)
                 {
@@ -185,27 +183,33 @@ namespace LODGenerator
                 System.Environment.Exit(404);
             }
             memoryStream.Position = 0L;
-            //Console.WriteLine("Reading " + fileName);
             BinaryReader reader = new BinaryReader((Stream)memoryStream);
-            this.header.Read(reader);
-            for (int index = 0; (long)index < (long)this.header.GetNumBlocks(); ++index)
+            try
             {
-                //Console.WriteLine(index + " Block = " + this.header.GetBlockTypeAtIndex(index));
-                if (NiFile.classTypes.ContainsKey(this.header.GetBlockTypeAtIndex(index)))
+                this.header.Read(reader);
+                for (int index = 0; (long)index < (long)this.header.GetNumBlocks(); ++index)
                 {
-                    NiObject niObject = (NiObject)Activator.CreateInstance(NiFile.classTypes[this.header.GetBlockTypeAtIndex(index)]);
-                    niObject.Read(this.header, reader);
-                    this.blocks.Add(niObject);
-                }
-                else
-                {
-                    uint blockSizeAtIndex = this.header.GetBlockSizeAtIndex(index);
-                    reader.ReadBytes((int)blockSizeAtIndex);
-                    this.blocks.Add((NiObject)null);
+                    if (NiFile.classTypes.ContainsKey(this.header.GetBlockTypeAtIndex(index)))
+                    {
+                        NiObject niObject = (NiObject)Activator.CreateInstance(NiFile.classTypes[this.header.GetBlockTypeAtIndex(index)]);
+                        niObject.Read(this.header, reader);
+                        this.blocks.Add(niObject);
+                    }
+                    else
+                    {
+                        uint blockSizeAtIndex = this.header.GetBlockSizeAtIndex(index);
+                        reader.ReadBytes((int)blockSizeAtIndex);
+                        this.blocks.Add((NiObject)null);
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                logFile.WriteLog("Error reading block " + fileName + " " + ex.Message);
+                logFile.Close();
+                System.Environment.Exit(501);
+            }
             reader.Close();
-            //Console.WriteLine("done " + fileName);
         }
 
         public void Write(string fileName, LogFile logFile)

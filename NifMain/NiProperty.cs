@@ -3,6 +3,7 @@ using System.IO;
 
 namespace LODGenerator.NifMain
 {
+    [Serializable]
     public class NiProperty : NiObjectNET
     {
         public override void Read(NiHeader header, BinaryReader reader)

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System;
 
 namespace LODGenerator.NifMain
 {
@@ -11,8 +12,8 @@ namespace LODGenerator.NifMain
 
         public NiTriShape(NiTriBasedGeom shape)
         {
-            this.name = "";
-            this.nameIdx = -1;
+            this.nameIdx = shape.GetNameIndex();
+            this.name = shape.GetName();
             this.numExtraData = shape.GetNumExtraData();
             this.extraData = shape.GetExtraData();
             this.controller = shape.GetController();

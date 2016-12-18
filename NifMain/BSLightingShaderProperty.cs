@@ -4,6 +4,7 @@ using System.IO;
 
 namespace LODGenerator.NifMain
 {
+    [Serializable]
     public class BSLightingShaderProperty : NiProperty
     {
         protected uint shaderType;
@@ -13,7 +14,7 @@ namespace LODGenerator.NifMain
         protected UVCoord uvScale;
         protected int textureSet;
         protected Color3 emissiveColor;
-        protected float emissiveMultiplier;
+        protected float emissiveMultiple;
         protected uint textureClampMode;
         protected float alpha;
         protected float unknownFloat2;
@@ -45,7 +46,7 @@ namespace LODGenerator.NifMain
             this.uvScale = new UVCoord(1f, 1f);
             this.textureSet = -1;
             this.emissiveColor = new Color3(0.0f, 0.0f, 0.0f);
-            this.emissiveMultiplier = 1f;
+            this.emissiveMultiple = 1f;
             this.textureClampMode = 3U;
             this.alpha = 1f;
             this.unknownFloat2 = 0.0f;
@@ -66,7 +67,7 @@ namespace LODGenerator.NifMain
             Utils.WriteUVCoord(writer, this.uvScale);
             writer.Write(this.textureSet);
             Utils.WriteColor3(writer, this.emissiveColor);
-            writer.Write(this.emissiveMultiplier);
+            writer.Write(this.emissiveMultiple);
             writer.Write(this.textureClampMode);
             writer.Write(this.alpha);
             writer.Write(this.unknownFloat2);
@@ -117,7 +118,7 @@ namespace LODGenerator.NifMain
             this.uvScale = Utils.ReadUVCoord(reader);
             this.textureSet = reader.ReadInt32();
             this.emissiveColor = Utils.ReadColor3(reader);
-            this.emissiveMultiplier = reader.ReadSingle();
+            this.emissiveMultiple = reader.ReadSingle();
             this.textureClampMode = reader.ReadUInt32();
             this.alpha = reader.ReadSingle();
             this.unknownFloat2 = reader.ReadSingle();
@@ -253,14 +254,14 @@ namespace LODGenerator.NifMain
             this.emissiveColor = value;
         }
 
-        public float GetEmissiveMultiplier()
+        public float GetEmissiveMultiple()
         {
-            return this.emissiveMultiplier;
+            return this.emissiveMultiple;
         }
 
-        public void SetEmissiveMultiplier(float value)
+        public void SetEmissiveMultiple(float value)
         {
-            this.emissiveMultiplier = value;
+            this.emissiveMultiple = value;
         }
 
         public uint GetTextureClampMode()

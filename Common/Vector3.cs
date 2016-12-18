@@ -2,6 +2,8 @@
 
 namespace LODGenerator.Common
 {
+
+    [Serializable]
     public class Vector3
     {
         private float x;

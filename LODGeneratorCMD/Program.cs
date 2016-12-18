@@ -61,6 +61,7 @@ namespace LODGeneratorCMD
             string gameDir = "";
             string outputDir = "";
             string uvfile = "";
+            string altfile = "";
             float southWestX = 0;
             float southWestY = 0;
             float atlasTolerance = 0.2f;
@@ -87,8 +88,8 @@ namespace LODGeneratorCMD
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "cellsw")
                     {
                         string[] strArray1 = strArray2[1].Split(' ');
-                        southWestX = float.Parse(strArray1[0], (IFormatProvider)cultureInfo);
-                        southWestY = float.Parse(strArray1[1], (IFormatProvider)cultureInfo);
+                        southWestX = float.Parse(strArray1[0], CultureInfo.InvariantCulture);
+                        southWestY = float.Parse(strArray1[1], CultureInfo.InvariantCulture);
                     }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "pathdata")
                     {
@@ -111,6 +112,10 @@ namespace LODGeneratorCMD
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "textureatlasmap")
                     {
                         uvfile = strArray2[1];
+                    }
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "alttextures")
+                    {
+                        altfile = strArray2[1];
                     }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "resource")
                     {
@@ -137,7 +142,7 @@ namespace LODGeneratorCMD
                     }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "atlastolerance")
                     {
-                        atlasTolerance = float.Parse(strArray2[1], (IFormatProvider)cultureInfo);
+                        atlasTolerance = float.Parse(strArray2[1], CultureInfo.InvariantCulture);
                     }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "ignoretranslation")
                     {
@@ -190,7 +195,7 @@ namespace LODGeneratorCMD
                     }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "globalscale")
                     {
-                        globalScale = float.Parse(strArray2[1], (IFormatProvider)cultureInfo);
+                        globalScale = float.Parse(strArray2[1], CultureInfo.InvariantCulture);
                     }
                 }
                 else
@@ -303,18 +308,25 @@ namespace LODGeneratorCMD
             {
                 StaticDesc staticDesc = new StaticDesc();
                 string[] strArray2 = streamReader.ReadLine().Split('\t');
+                counter++;
+                if (strArray2.Count() != 16)
+                {
+                    theLog.WriteLog("Input file " + path + " has wrong data on line " + counter);
+                    theLog.Close();
+                    return -1;
+                }
                 staticDesc.refID = strArray2[0];
                 //theLog.WriteLog(staticDesc.refID);
-                staticDesc.staticFlags = int.Parse(strArray2[1], NumberStyles.HexNumber, (IFormatProvider)cultureInfo);
-                staticDesc.x = float.Parse(strArray2[2], (IFormatProvider)cultureInfo);
-                staticDesc.y = float.Parse(strArray2[3], (IFormatProvider)cultureInfo);
-                staticDesc.z = float.Parse(strArray2[4], (IFormatProvider)cultureInfo);
-                staticDesc.rotX = float.Parse(strArray2[5], (IFormatProvider)cultureInfo);
-                staticDesc.rotY = float.Parse(strArray2[6], (IFormatProvider)cultureInfo);
-                staticDesc.rotZ = float.Parse(strArray2[7], (IFormatProvider)cultureInfo);
-                staticDesc.scale = float.Parse(strArray2[8], (IFormatProvider)cultureInfo);
+                staticDesc.refFlags = int.Parse(strArray2[1], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                staticDesc.x = float.Parse(strArray2[2], CultureInfo.InvariantCulture);
+                staticDesc.y = float.Parse(strArray2[3], CultureInfo.InvariantCulture);
+                staticDesc.z = float.Parse(strArray2[4], CultureInfo.InvariantCulture);
+                staticDesc.rotX = float.Parse(strArray2[5], CultureInfo.InvariantCulture);
+                staticDesc.rotY = float.Parse(strArray2[6], CultureInfo.InvariantCulture);
+                staticDesc.rotZ = float.Parse(strArray2[7], CultureInfo.InvariantCulture);
+                staticDesc.scale = float.Parse(strArray2[8], CultureInfo.InvariantCulture);
                 staticDesc.staticName = strArray2[9];
-                staticDesc.refFlags = int.Parse(strArray2[10], NumberStyles.HexNumber, (IFormatProvider)cultureInfo);
+                staticDesc.staticFlags = int.Parse(strArray2[10], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
                 staticDesc.materialName = strArray2[11];
                 staticDesc.staticFullModel = strArray2[12];
                 if (strArray2.Length >= 16)
@@ -349,20 +361,45 @@ namespace LODGeneratorCMD
                     if (strArray2.Length >= 8)
                     {
                         atlasDesc.SourceTexture = strArray2[0].ToLower(CultureInfo.InvariantCulture);
-                        int textureWidth = int.Parse(strArray2[1], (IFormatProvider)cultureInfo);
-                        int textureHeight = int.Parse(strArray2[2], (IFormatProvider)cultureInfo);
-                        int textureX = int.Parse(strArray2[3], (IFormatProvider)cultureInfo);
-                        int textureY = int.Parse(strArray2[4], (IFormatProvider)cultureInfo);
-                        int atlasWidth = int.Parse(strArray2[6], (IFormatProvider)cultureInfo);
-                        int atlasHeight = int.Parse(strArray2[7], (IFormatProvider)cultureInfo);
-                        atlasDesc.scaleU = (float) textureWidth / (float) atlasWidth;
-                        atlasDesc.scaleV = (float) textureHeight / (float)atlasHeight;
-                        atlasDesc.posU = (float)textureX / (float) atlasWidth;
-                        atlasDesc.posV = (float)textureY / (float) atlasHeight;
+                        int textureWidth = int.Parse(strArray2[1], CultureInfo.InvariantCulture);
+                        int textureHeight = int.Parse(strArray2[2], CultureInfo.InvariantCulture);
+                        int textureX = int.Parse(strArray2[3], CultureInfo.InvariantCulture);
+                        int textureY = int.Parse(strArray2[4], CultureInfo.InvariantCulture);
+                        int atlasWidth = int.Parse(strArray2[6], CultureInfo.InvariantCulture);
+                        int atlasHeight = int.Parse(strArray2[7], CultureInfo.InvariantCulture);
+                        atlasDesc.scaleU = (float)textureWidth / (float)atlasWidth;
+                        atlasDesc.scaleV = (float)textureHeight / (float)atlasHeight;
+                        atlasDesc.posU = (float)textureX / (float)atlasWidth;
+                        atlasDesc.posV = (float)textureY / (float)atlasHeight;
                         atlasDesc.AtlasTexture = strArray2[5].ToLower(CultureInfo.InvariantCulture);
                         atlasDesc.AtlasTextureN = strArray2[5].ToLower(CultureInfo.InvariantCulture).Replace(".dds", "_n.dds");
                         //theLog.WriteLog(atlasDesc.SourceTexture + "\t" + atlasDesc.AtlasTexture + "\t" + atlasDesc.scaleU + "\t" + atlasDesc.scaleV + "\t" + atlasDesc.posU + "\t" + atlasDesc.posV);
                         AtlasList.Set(atlasDesc.SourceTexture, atlasDesc);
+                    }
+                }
+                streamReader.Close();
+            }
+            if (File.Exists(altfile))
+            {
+                theLog.WriteLog("Using Alt Textures: " + altfile);
+                streamReader = new StreamReader(altfile);
+                while (!streamReader.EndOfStream)
+                {
+                    string[] strArray2 = streamReader.ReadLine().ToLower(CultureInfo.InvariantCulture).Split('\t');
+                    AltTextureDesc altTexDesc = new AltTextureDesc();
+                    if (strArray2.Length > 0)
+                    {
+                        for (int index = 1; index < strArray2.Length; index++)
+                        {
+                            string[] strArray3 = strArray2[index].Split('=');
+                            string key = strArray2[0] + "_" + strArray3[0] + "_" + strArray3[1];
+                            altTexDesc.textures = strArray3[2].Split(',');
+                            if (!AltTextureList.Contains(key))
+                            {
+                                //theLog.WriteLog(key + " = " + altTexDesc.textures[0] + ", " + altTexDesc.textures[1]);
+                                AltTextureList.Set(key, altTexDesc);
+                            }
+                        }
                     }
                 }
                 streamReader.Close();
@@ -392,8 +429,8 @@ namespace LODGeneratorCMD
                         lodLevelToGenerate = CmdArgs.GetInt(cmdArgs, "lodLevel", -1),
                         lodX = CmdArgs.GetInt(cmdArgs, "x", -1),
                         lodY = CmdArgs.GetInt(cmdArgs, "y", -1),
-                        southWestX = (int) southWestX,
-                        southWestY = (int) southWestY,
+                        southWestX = (int)southWestX,
+                        southWestY = (int)southWestY,
                         atlasToleranceMin = atlasTolerance * -1f,
                         atlasToleranceMax = atlasTolerance + 1f,
                         removeUnderwaterFaces = !ignoreWater,

@@ -1,6 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.Serialization;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace LODGenerator.Common
 {
@@ -232,6 +237,44 @@ namespace LODGenerator.Common
                 logFile.Close();
                 System.Environment.Exit(404);
                 return (FileStream)null;
+            }
+        }
+
+        // Convert an object to a byte array
+        public static byte[] ObjectToByteArray(Object obj)
+        {
+            if (obj == null)
+                return null;
+            BinaryFormatter bf = new BinaryFormatter();
+            MemoryStream ms = new MemoryStream();
+            bf.Serialize(ms, obj);
+            return ms.ToArray();
+        }
+
+        public static string GetHash(byte[] objectAsBytes)
+        {
+            MD5 md5 = new MD5CryptoServiceProvider();
+            try
+            {
+                byte[] result = md5.ComputeHash(objectAsBytes);
+
+                // Build the final string by converting each byte
+                // into hex and appending it to a StringBuilder
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < result.Length; i++)
+                {
+                    sb.Append(result[i].ToString("X2"));
+                }
+
+                // And return it
+                return sb.ToString();
+            }
+            catch (ArgumentNullException ane)
+            {
+                //If something occurred during serialization, 
+                //this method is called with a null argument. 
+                Console.WriteLine("Hash has not been generated. " + ane);
+                return null;
             }
         }
     }

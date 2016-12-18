@@ -1,4 +1,17 @@
 Changelog
+0.9	added material 'PassThru' - works for BSLightingShaderProperty and BSEffectShaderProperty
+		entire shader will be copied straight into the bto
+		shapes with equal shaders are merged
+		textures will not be atlassed
+		changes all vertex alpha to 1f, since LOD only has alpha on/off at 50%, vertex alpha is applied if SLSF2_LOD_Objects/SLSF2_HD_LOD_Objects are not set
+		Extra Data List and Controllers are ignored
+		keep vertex colors regardless of --dontGenerateVertexColors
+	added alternate texture replacement - see LODGen_alt_tamriel.txt / LODGen_alt_textures_tamriel.txt in  bin/Release
+		applied before atlas
+		Get 3D Index and 3D Name and replacement textures from CK - both 3D Index and 3D Name need to match in nif
+		if source texture has \lod in path the desination must have it too and vice versa
+	generate normals in case they are missing from a shape
+	read tangents/bitangents from binary extra data, Oblivion
 
 0.8	rewritten remove unseen faces code to be more effetive
 	changed IgnoreTranslation= to be a mesh mask, e.g. to ignore all use just use .nif

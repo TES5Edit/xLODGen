@@ -4,6 +4,7 @@ using System.IO;
 
 namespace LODGenerator.NifMain
 {
+    [Serializable]
     public class BSEffectShaderProperty : NiProperty
     {
         protected uint shaderFlags1;
@@ -58,6 +59,38 @@ namespace LODGenerator.NifMain
             this.greyscaleTexture = Utils.ReadSizedString(reader);
         }
 
+        public override void Write(BinaryWriter writer)
+        {
+            base.Write(writer);
+            writer.Write(this.shaderFlags1);
+            writer.Write(this.shaderFlags2);
+            Utils.WriteUVCoord(writer, this.uvOffset);
+            Utils.WriteUVCoord(writer, this.uvScale);
+            Utils.WriteSizedString(writer, this.sourceTexture);
+            writer.Write(this.textureClampMode);
+            writer.Write(this.falloffStartAngle);
+            writer.Write(this.falloffStopAngle);
+            writer.Write(this.falloffStartOpacity);
+            writer.Write(this.falloffStopOpacity);
+            Utils.WriteColor4(writer, this.emissiveColor);
+            writer.Write(this.emissiveMultiple);
+            writer.Write(this.softFalloffDepth);
+            Utils.WriteSizedString(writer, this.greyscaleTexture);
+        }
+
+        public override string GetClassName()
+        {
+            return "BSEffectShaderProperty";
+        }
+
+        public override uint GetSize()
+        {
+            uint num = base.GetSize() + 68U;
+            num += (uint)(4 + this.sourceTexture.Length);
+            num += (uint)(4 + this.greyscaleTexture.Length);
+            return num;
+        }
+
         public string GetSourceTexture()
         {
             return this.sourceTexture;
@@ -77,10 +110,20 @@ namespace LODGenerator.NifMain
             return this.shaderFlags1;
         }
 
+        public void SetShaderFlags1(uint value)
+        {
+            this.shaderFlags1 = value;
+        }
+
         // get ShaderFlags2;
         public uint GetShaderFlags2()
         {
             return this.shaderFlags2;
+        }
+
+        public void SetShaderFlags2(uint value)
+        {
+            this.shaderFlags2 = value;
         }
 
         // get ClampMode;
@@ -88,5 +131,16 @@ namespace LODGenerator.NifMain
         {
             return this.textureClampMode;
         }
+
+        public Color4 GetEmissiveColor()
+        {
+            return this.emissiveColor;
+        }
+
+        public float GetEmissiveMultiple()
+        {
+            return this.emissiveMultiple;
+        }
+
     }
 }

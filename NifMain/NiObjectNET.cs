@@ -5,6 +5,7 @@ using System.IO;
 
 namespace LODGenerator.NifMain
 {
+    [Serializable]
     public class NiObjectNET : NiObject
     {
         protected int nameIdx;
@@ -36,10 +37,16 @@ namespace LODGenerator.NifMain
         {
             base.Write(writer);
             writer.Write(this.nameIdx);
-            writer.Write(this.numExtraData);
-            for (int index = 0; (long)index < (long)this.numExtraData; ++index)
-                writer.Write(this.extraData[index]);
-            writer.Write(this.controller);
+            writer.Write(0U);
+            writer.Write(-1);
+            if (this.numExtraData != 0U)
+            {
+                Console.WriteLine("There is a controller here!?");
+            }
+            //writer.Write(this.numExtraData);
+            //for (int index = 0; (long)index < (long)this.numExtraData; ++index)
+            //    writer.Write(this.extraData[index]);
+            //writer.Write(this.controller);
         }
 
         public override uint GetSize()

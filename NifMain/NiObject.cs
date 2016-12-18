@@ -1,7 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace LODGenerator.NifMain
 {
+    [Serializable]
     public class NiObject
     {
         public virtual void Read(NiHeader header, BinaryReader reader)

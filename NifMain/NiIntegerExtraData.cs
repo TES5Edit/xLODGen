@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace LODGenerator.NifMain
 {
@@ -17,9 +18,20 @@ namespace LODGenerator.NifMain
             this.integerData = reader.ReadUInt32();
         }
 
-        public override uint GetSize()
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            return base.GetSize() + 4U;
+            base.Write(header, writer);
+            writer.Write(this.integerData);
+        }
+
+        public override uint GetSize(NiHeader header)
+        {
+            return base.GetSize(header) + 4U;
+        }
+
+        public void SetIntegerData(uint value)
+        {
+            this.integerData = value;
         }
 
         public override string GetClassName()

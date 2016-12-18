@@ -15,12 +15,24 @@ namespace LODGenerator
             typeof (BSFadeNode)
             },
             {
-            "NiTriShape",
-            typeof (NiTriShape)
+                "NiTriShape",
+                typeof (NiTriShape)
             },
             {
                 "NiTriShapeData",
                 typeof (NiTriShapeData)
+            },
+            {
+                "BSTriShape",
+                typeof (BSTriShape)
+            },
+            {
+                "BSSubIndexTriShape",
+                typeof (BSSubIndexTriShape)
+            },
+            {
+                "BSMeshLODTriShape",
+                typeof (BSMeshLODTriShape)
             },
             {
                 "BSLightingShaderProperty",
@@ -37,6 +49,22 @@ namespace LODGenerator
             {
                 "NiNode",
                 typeof (NiNode)
+            },
+            {
+                "BSTreeNode",
+                typeof (BSTreeNode)
+            },
+            {
+                "NiSwitchNode",
+                typeof (NiSwitchNode)
+            },
+            {
+                "BSLeafAnimNode",
+                typeof (NiNode)
+            },
+            {
+                "NiBillboardNode",
+                typeof (NiBillboardNode)
             },
             {
                 "NiMaterialProperty",
@@ -139,51 +167,62 @@ namespace LODGenerator
         public void Read(string gameDir, string fileName, LogFile logFile)
         {
             MemoryStream memoryStream = new MemoryStream();
-            if (File.Exists(gameDir + fileName))
+            try
             {
-                try
+                if (File.Exists(gameDir + fileName))
                 {
-                    FileStream fileStream = (FileStream)null;
-                    while (fileStream == null)
+                    try
                     {
-                        fileStream = Utils.GetFileStream(new FileInfo(gameDir + fileName), logFile);
+                        FileStream fileStream = (FileStream)null;
+                        while (fileStream == null)
+                        {
+                            fileStream = Utils.GetFileStream(new FileInfo(gameDir + fileName), logFile);
+                        }
+                        BinaryReader binaryReader = new BinaryReader((Stream)fileStream);
+                        long length = binaryReader.BaseStream.Length;
+                        memoryStream.Write(binaryReader.ReadBytes((int)length), 0, (int)length);
+                        binaryReader.Close();
+                        //logFile.WriteLog(" read " + fileName + " " + length);
                     }
-                    BinaryReader binaryReader = new BinaryReader((Stream)fileStream);
-                    long length = binaryReader.BaseStream.Length;
-                    memoryStream.Write(binaryReader.ReadBytes((int)length), 0, (int)length);
-                    binaryReader.Close();
-                    //logFile.WriteLog(" read " + fileName + " " + length);
+                    catch (Exception ex)
+                    {
+                        logFile.WriteLog("Error reading " + fileName + " " + ex.Message);
+                        logFile.Close();
+                        System.Environment.Exit(500);
+                    }
                 }
-                catch (Exception ex)
+                else if (BSAArchive.FileExists(fileName))
                 {
-                    logFile.WriteLog("Error reading " + fileName + " " + ex.Message);
+                    try
+                    {
+                        byte[] newfile = BSAArchive.GetFile(fileName);
+                        int length = newfile.Length;
+                        memoryStream.Write(newfile, 0, length);
+                    }
+                    catch (Exception ex)
+                    {
+                        logFile.WriteLog("Error reading " + fileName + " from BSA/BA2 " + ex.Message);
+                        logFile.Close();
+                        System.Environment.Exit(501);
+                    }
+                }
+                else
+                {
+                    logFile.WriteLog(fileName + " not found");
                     logFile.Close();
-                    System.Environment.Exit(500);
+                    System.Environment.Exit(404);
                 }
             }
-            else if (BSAArchive.FileExists(fileName))
+            catch (Exception ex)
             {
-                try
-                {
-                    byte[] newfile = BSAArchive.GetFile(fileName);
-                    int length = newfile.Length;
-                    memoryStream.Write(newfile, 0, length);
-                }
-                catch (Exception ex)
-                {
-                    logFile.WriteLog("Error reading " + fileName + " from BSA " + ex.Message);
-                    logFile.Close();
-                    System.Environment.Exit(501);
-                }
-            }
-            else
-            {
-                logFile.WriteLog(fileName + " not found");
+                logFile.WriteLog("Error accessing " + gameDir + fileName + " " + ex.Message);
+                logFile.WriteLog("In case Mod Organizer is used, set output path outside of game and MO virtual file system directory");
                 logFile.Close();
-                System.Environment.Exit(404);
+                System.Environment.Exit(502);
             }
             memoryStream.Position = 0L;
             BinaryReader reader = new BinaryReader((Stream)memoryStream);
+            string error = "Read error " + fileName;
             try
             {
                 this.header.Read(reader);
@@ -197,17 +236,18 @@ namespace LODGenerator
                     }
                     else
                     {
+                        error = "Unsupported block " + index + " " + this.header.GetBlockTypeAtIndex(index) + " in " + gameDir + fileName;
                         uint blockSizeAtIndex = this.header.GetBlockSizeAtIndex(index);
                         reader.ReadBytes((int)blockSizeAtIndex);
                         this.blocks.Add((NiObject)null);
                     }
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                logFile.WriteLog("Error reading block " + fileName + " " + ex.Message);
-                logFile.Close();
-                System.Environment.Exit(501);
+                logFile.WriteLog(error);
+                //logFile.Close();
+                //System.Environment.Exit(501);
             }
             reader.Close();
         }
@@ -217,10 +257,12 @@ namespace LODGenerator
             try
             {
                 BinaryWriter writer = new BinaryWriter((Stream)new FileStream(fileName, FileMode.Create));
-                this.header.Update(this.blocks);
+                this.header.Update(header, this.blocks);
                 this.header.Write(writer);
                 for (int index = 0; (long)index < (long)this.header.GetNumBlocks(); ++index)
-                    this.blocks[index].Write(writer);
+                {
+                    this.blocks[index].Write(header, writer);
+                }
                 writer.Write(1);
                 writer.Write(0);
                 writer.Close();
@@ -249,19 +291,45 @@ namespace LODGenerator
             return this.header.GetString((uint)index);
         }
 
+        public void SetHeaderString(string value)
+        {
+            this.header.SetHeaderString(value);
+        }
+
         public uint GetVersion()
         {
             return this.header.GetVersion();
+        }
+
+        public void SetVersion(uint value)
+        {
+            this.header.SetVersion(value);
         }
 
         public uint GetUserVersion()
         {
             return this.header.GetUserVersion();
         }
+
+        public void SetUserVersion(uint value)
+        {
+            this.header.SetUserVersion(value);
+        }
+
+        public void SetUserVersion2(uint value)
+        {
+            this.header.SetUserVersion2(value);
+        }
+
+        public void SetCreator(string value)
+        {
+            this.header.SetCreator(value);
+        }
+
         public int AddBlock(NiObject obj)
         {
             this.blocks.Add(obj);
-            this.header.AddBlock(obj);
+            this.header.AddBlock(this.header, obj);
             return this.blocks.Count - 1;
         }
 

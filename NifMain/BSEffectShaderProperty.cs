@@ -21,6 +21,10 @@ namespace LODGenerator.NifMain
         protected float emissiveMultiple;
         protected float softFalloffDepth;
         protected string greyscaleTexture;
+        protected string envMapTexture;
+        protected string normalTexture;
+        protected string envMaskTexture;
+        protected float enviromentMapScale;
 
         public BSEffectShaderProperty()
         {
@@ -38,6 +42,10 @@ namespace LODGenerator.NifMain
             this.emissiveMultiple = 1f;
             this.softFalloffDepth = 0.0f;
             this.greyscaleTexture = "";
+            this.envMapTexture = "";
+            this.normalTexture = "";
+            this.envMaskTexture = "";
+            this.enviromentMapScale = 1f;
         }
 
         public override void Read(NiHeader header, BinaryReader reader)
@@ -57,11 +65,18 @@ namespace LODGenerator.NifMain
             this.emissiveMultiple = reader.ReadSingle();
             this.softFalloffDepth = reader.ReadSingle();
             this.greyscaleTexture = Utils.ReadSizedString(reader);
+            if (header.GetVersion() == 335675399U && header.GetUserVersion2() == 130)
+            {
+                this.envMapTexture = Utils.ReadSizedString(reader);
+                this.normalTexture = Utils.ReadSizedString(reader);
+                this.envMaskTexture = Utils.ReadSizedString(reader);
+                this.enviromentMapScale = reader.ReadSingle();
+            }
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.shaderFlags1);
             writer.Write(this.shaderFlags2);
             Utils.WriteUVCoord(writer, this.uvOffset);
@@ -83,9 +98,9 @@ namespace LODGenerator.NifMain
             return "BSEffectShaderProperty";
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            uint num = base.GetSize() + 68U;
+            uint num = base.GetSize(header) + 68U;
             num += (uint)(4 + this.sourceTexture.Length);
             num += (uint)(4 + this.greyscaleTexture.Length);
             return num;
@@ -94,6 +109,11 @@ namespace LODGenerator.NifMain
         public string GetSourceTexture()
         {
             return this.sourceTexture;
+        }
+
+        public void SetSourceTexture(string value)
+        {
+            this.sourceTexture = value; 
         }
 
         public override bool IsDerivedType(string type)
@@ -130,6 +150,11 @@ namespace LODGenerator.NifMain
         public uint GetTextureClampMode()
         {
             return this.textureClampMode;
+        }
+
+        public void SetTextureClampMode(uint value)
+        {
+            this.textureClampMode = value;
         }
 
         public Color4 GetEmissiveColor()

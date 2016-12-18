@@ -1,4 +1,5 @@
 ﻿using LODGenerator.Common;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -12,7 +13,8 @@ namespace LODGenerator.NifMain
         protected byte compressFlags;
         protected bool hasVertices;
         protected List<Vector3> vertices;
-        protected ushort bsNumUVSets;
+        protected byte numUVSets;
+        protected byte extraVectorFlags;
         protected uint skyrimMaterial;
         protected bool hasNormals;
         protected List<Vector3> normals;
@@ -34,7 +36,8 @@ namespace LODGenerator.NifMain
             this.compressFlags = (byte)0;
             this.hasVertices = false;
             this.vertices = new List<Vector3>();
-            this.bsNumUVSets = (ushort)0;
+            this.numUVSets = (byte)0;
+            this.extraVectorFlags = (byte)0;
             this.skyrimMaterial = 0U;
             this.hasNormals = false;
             this.normals = new List<Vector3>();
@@ -60,22 +63,33 @@ namespace LODGenerator.NifMain
             if (this.hasVertices)
             {
                 for (int index = 0; index < (int)this.numVertices; ++index)
+                {
                     this.vertices.Add(Utils.ReadVector3(reader));
+                }
             }
-            this.bsNumUVSets = reader.ReadUInt16();
+            this.numUVSets = reader.ReadByte();
+            this.extraVectorFlags = reader.ReadByte();
             if (header.GetUserVersion() == 12U)
+            {
                 this.skyrimMaterial = reader.ReadUInt32();
+            }
             this.hasNormals = Utils.ReadBool(reader);
             if (this.hasNormals)
             {
                 for (int index = 0; index < (int)this.numVertices; ++index)
+                {
                     this.normals.Add(Utils.ReadVector3(reader));
-                if ((int)this.bsNumUVSets >= 4096)
+                }
+                if ((this.extraVectorFlags & 16) == 16)
                 {
                     for (int index = 0; index < (int)this.numVertices; ++index)
+                    { 
                         this.tangents.Add(Utils.ReadVector3(reader));
+                    }
                     for (int index = 0; index < (int)this.numVertices; ++index)
+                    {
                         this.bitangents.Add(Utils.ReadVector3(reader));
+                    }
                 }
             }
             this.center = Utils.ReadVector3(reader);
@@ -86,18 +100,20 @@ namespace LODGenerator.NifMain
                 for (int index = 0; index < (int)this.numVertices; ++index)
                     this.vertexColors.Add(Utils.ReadColor4(reader));
             }
-            if (((int)this.bsNumUVSets & 1) == 1)
+            if (((int)this.numUVSets & 1) == 1)
             {
                 for (int index = 0; index < (int)this.numVertices; ++index)
+                {
                     this.uvCoords.Add(Utils.ReadUVCoord(reader));
+                }
             }
             this.consistencyFlags = reader.ReadUInt16();
             this.additionalData = reader.ReadInt32();
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.unknownInt);
             writer.Write(this.numVertices);
             writer.Write(this.keepFlags);
@@ -105,30 +121,55 @@ namespace LODGenerator.NifMain
             Utils.WriteBool(writer, this.hasVertices);
             if (this.hasVertices)
             {
-                for (int index = 0; index < (int)this.numVertices; ++index)
+                for (int index = 0; index < this.vertices.Count; ++index)
+                {
                     Utils.WriteVector3(writer, this.vertices[index]);
+                }
             }
-            writer.Write(this.bsNumUVSets);
-            if (Game.Mode != "fnv")
+            writer.Write(this.numUVSets);
+            writer.Write(this.extraVectorFlags);
+            if (header.GetUserVersion() == 12U)
             {
                 writer.Write(this.skyrimMaterial);
-            }
-            if (this.hasNormals && this.normals.Count == 0)
-            {
-                for (int index = 0; index < (int)this.numVertices; ++index)
-                    this.normals.Add(new Vector3(0.0f, 0.0f, 0.0f));
             }
             Utils.WriteBool(writer, this.hasNormals);
             if (this.hasNormals)
             {
-                for (int index = 0; index < (int)this.numVertices; ++index)
-                    Utils.WriteVector3(writer, this.normals[index]);
-                if ((int)this.bsNumUVSets >= 4096)
+                if (this.normals.Count == 0)
                 {
                     for (int index = 0; index < (int)this.numVertices; ++index)
+                    {
+                        this.normals.Add(new Vector3(0.0f, 0.0f, 0.0f));
+                    }
+                }
+                for (int index = 0; index < this.normals.Count; ++index)
+                {
+                    Utils.WriteVector3(writer, this.normals[index]);
+                }
+                if ((int)this.extraVectorFlags == 16)
+                {
+                    if (this.tangents.Count == 0)
+                    {
+                        for (int index = 0; index < (int)this.numVertices; ++index)
+                        {
+                            this.tangents.Add(new Vector3(0.0f, 0.0f, 0.0f));
+                        }
+                    }
+                    if (this.bitangents.Count == 0)
+                    {
+                        for (int index = 0; index < (int)this.numVertices; ++index)
+                        {
+                            this.bitangents.Add(new Vector3(0.0f, 0.0f, 0.0f));
+                        }
+                    }
+                    for (int index = 0; index < this.tangents.Count; ++index)
+                    {
                         Utils.WriteVector3(writer, this.tangents[index]);
-                    for (int index = 0; index < (int)this.numVertices; ++index)
+                    }
+                    for (int index = 0; index < this.bitangents.Count; ++index)
+                    {
                         Utils.WriteVector3(writer, this.bitangents[index]);
+                    }
                 }
             }
             Utils.WriteVector3(writer, this.center);
@@ -136,27 +177,31 @@ namespace LODGenerator.NifMain
             Utils.WriteBool(writer, this.hasVertexColors);
             if (this.hasVertexColors)
             {
-                for (int index = 0; index < (int)this.numVertices; ++index)
+                for (int index = 0; index < this.vertexColors.Count; ++index)
+                {
                     Utils.WriteColor4(writer, this.vertexColors[index]);
+                }
             }
-            if (((int)this.bsNumUVSets & 1) == 1)
+            if (((int)this.numUVSets & 1) == 1)
             {
-                for (int index = 0; index < (int)this.numVertices; ++index)
+                for (int index = 0; index < this.uvCoords.Count; ++index)
+                {
                     Utils.WriteUVCoord(writer, this.uvCoords[index]);
+                }
             }
             writer.Write(this.consistencyFlags);
             writer.Write(this.additionalData);
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            if (Game.Mode == "fnv")
+            if (header.GetUserVersion() == 12U)
             {
-                return (uint)((int)(base.GetSize() + 35U) + (this.hasVertices ? 12 * (int)this.numVertices : 0) + (this.hasNormals ? 12 * (int)this.numVertices : 0) + (!this.hasNormals || (int)this.bsNumUVSets < 4096 ? 0 : 12 * (int)this.numVertices) + (!this.hasNormals || (int)this.bsNumUVSets < 4096 ? 0 : 12 * (int)this.numVertices) + (this.hasVertexColors ? 16 * (int)this.numVertices : 0) + (((int)this.bsNumUVSets & 1) == 1 ? 8 * (int)this.numVertices : 0));
+                return (uint)((int)(base.GetSize(header) + 39U) + (this.hasVertices ? 12 * (int)this.numVertices : 0) + (this.hasNormals ? 12 * (int)this.numVertices : 0) + (!this.hasNormals || (int)this.extraVectorFlags == 0 ? 0 : 12 * (int)this.numVertices) + (!this.hasNormals || (int)this.extraVectorFlags == 0 ? 0 : 12 * (int)this.numVertices) + (this.hasVertexColors ? 16 * (int)this.numVertices : 0) + (((int)this.numUVSets & 1) == 1 ? 8 * (int)this.numVertices : 0));
             }
             else
             {
-                return (uint)((int)(base.GetSize() + 39U) + (this.hasVertices ? 12 * (int)this.numVertices : 0) + (this.hasNormals ? 12 * (int)this.numVertices : 0) + (!this.hasNormals || (int)this.bsNumUVSets < 4096 ? 0 : 12 * (int)this.numVertices) + (!this.hasNormals || (int)this.bsNumUVSets < 4096 ? 0 : 12 * (int)this.numVertices) + (this.hasVertexColors ? 16 * (int)this.numVertices : 0) + (((int)this.bsNumUVSets & 1) == 1 ? 8 * (int)this.numVertices : 0));
+                return (uint)((int)(base.GetSize(header) + 35U) + (this.hasVertices ? 12 * (int)this.numVertices : 0) + (this.hasNormals ? 12 * (int)this.numVertices : 0) + (!this.hasNormals || (int)this.extraVectorFlags == 0 ? 0 : 12 * (int)this.numVertices) + (!this.hasNormals || (int)this.extraVectorFlags == 0 ? 0 : 12 * (int)this.numVertices) + (this.hasVertexColors ? 16 * (int)this.numVertices : 0) + (((int)this.numUVSets & 1) == 1 ? 8 * (int)this.numVertices : 0));
             }
         }
 
@@ -315,9 +360,14 @@ namespace LODGenerator.NifMain
             this.hasVertexColors = value;
         }
 
-        public ushort GetBSNumUVSets()
+        public byte GetNumUVSets()
         {
-            return this.bsNumUVSets;
+            return this.numUVSets;
+        }
+
+        public byte GetExtraVertexFlag()
+        {
+            return this.extraVectorFlags;
         }
 
         public float GetRadius()
@@ -335,22 +385,26 @@ namespace LODGenerator.NifMain
             return this.additionalData;
         }
 
-        public void SetNumUVSets(ushort value)
+        public void SetNumUVSets(byte value)
         {
-            int num = (int)this.bsNumUVSets;
-            this.bsNumUVSets = (ushort)0;
-            if (num >= 4096)
-                this.bsNumUVSets = (ushort)4096;
-            this.bsNumUVSets += value;
+            this.numUVSets += value;
+        }
+
+        public void SetExtraVertexFlag(byte value)
+        {
+            this.extraVectorFlags = value;
         }
 
         public void SetHasTangents(bool value)
         {
-            int num = (int)this.bsNumUVSets & 1;
-            this.bsNumUVSets = (ushort)0;
             if (value)
-                this.bsNumUVSets = (ushort)4096;
-            this.bsNumUVSets += (ushort)num;
+            {
+                SetExtraVertexFlag(16);
+            }
+            else
+            {
+                SetExtraVertexFlag(0);
+            }
         }
 
         public void AppendVertices(List<Vector3> verts)
@@ -387,7 +441,7 @@ namespace LODGenerator.NifMain
         public void AppendUVCoords(List<UVCoord> uvs)
         {
             this.uvCoords.AddRange((IEnumerable<UVCoord>)uvs);
-            this.SetNumUVSets((ushort)1);
+            this.SetNumUVSets(1);
         }
 
         public override string GetClassName()

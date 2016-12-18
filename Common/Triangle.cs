@@ -1,4 +1,6 @@
-﻿namespace LODGenerator.Common
+﻿using System;
+
+namespace LODGenerator.Common
 {
     public class Triangle
     {
@@ -44,6 +46,33 @@
             this.v1 = _v1;
             this.v2 = _v2;
             this.v3 = _v3;
+        }
+
+        public Triangle(int _v1, int _v2, int _v3)
+        {
+            this.v1 = (ushort)_v1;
+            this.v2 = (ushort)_v2;
+            this.v3 = (ushort)_v3;
+        }
+
+        public bool Contains(Triangle triangle)
+        {
+            for (int index = 0; index < 3; index++)
+            {
+                if (this.v1 == triangle[index])
+                {
+                    return true;
+                }
+                if (this.v2 == triangle[index])
+                {
+                    return true;
+                }
+                if (this.v3 == triangle[index])
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public override string ToString()

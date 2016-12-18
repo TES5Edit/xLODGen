@@ -64,9 +64,9 @@ namespace LODGenerator.NifMain
             return v;
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return (uint)((int)base.GetSize() + 4 + this.binaryData.Count);
+            return (uint)((int)base.GetSize(header) + 4 + this.binaryData.Count);
         }
 
         public override string GetClassName()

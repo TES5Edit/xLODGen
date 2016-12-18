@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using System;
 
 namespace LODGenerator.NifMain
 {
@@ -12,8 +11,8 @@ namespace LODGenerator.NifMain
 
         public NiTriShape(NiTriBasedGeom shape)
         {
-            this.nameIdx = shape.GetNameIndex();
-            this.name = shape.GetName();
+            this.name = "";
+            this.nameIdx = -1;
             this.numExtraData = shape.GetNumExtraData();
             this.extraData = shape.GetExtraData();
             this.controller = shape.GetController();
@@ -33,10 +32,14 @@ namespace LODGenerator.NifMain
             this.numProperties = shape.GetNumProperties();
             this.properties = new List<int>();
             for (int index = 0; (long)index < (long)this.numProperties; ++index)
+            {
                 this.properties.Add(shape.GetProperty(index));
+            }
             this.bsProperties = new int[2];
             for (int index = 0; index < 2; ++index)
+            {
                 this.bsProperties[index] = shape.GetBSProperty(index);
+            }
         }
 
         public override void Read(NiHeader header, BinaryReader reader)
@@ -44,14 +47,14 @@ namespace LODGenerator.NifMain
             base.Read(header, reader);
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return base.GetSize();
+            return base.GetSize(header);
         }
 
         public override string GetClassName()

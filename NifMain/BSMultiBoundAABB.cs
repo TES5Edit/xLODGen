@@ -21,16 +21,16 @@ namespace LODGenerator.NifMain
             this.extent = Utils.ReadVector3(reader);
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             Utils.WriteVector3(writer, this.position);
             Utils.WriteVector3(writer, this.extent);
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return base.GetSize() + 24U;
+            return base.GetSize(header) + 24U;
         }
 
         public override string GetClassName()

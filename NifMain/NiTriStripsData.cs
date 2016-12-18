@@ -1,4 +1,5 @@
 ﻿using LODGenerator.Common;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -24,15 +25,21 @@ namespace LODGenerator.NifMain
             base.Read(header, reader);
             this.numStrips = reader.ReadUInt16();
             for (int index = 0; index < (int)this.numStrips; ++index)
+            {
                 this.stripLengths.Add(reader.ReadUInt16());
+            }
             this.hasPoints = Utils.ReadBool(reader);
             if (!this.hasPoints)
+            {
                 return;
+            }
             for (int index1 = 0; index1 < (int)this.numStrips; ++index1)
             {
                 this.points.Add(new List<ushort>());
                 for (int index2 = 0; index2 < (int)this.stripLengths[index1]; ++index2)
+                {
                     this.points[index1].Add(reader.ReadUInt16());
+                }
             }
         }
 
@@ -61,9 +68,9 @@ namespace LODGenerator.NifMain
             return this.points[index];
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return base.GetSize();
+            return base.GetSize(header);
         }
 
         public override string GetClassName()

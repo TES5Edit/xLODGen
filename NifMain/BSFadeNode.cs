@@ -10,14 +10,14 @@ namespace LODGenerator.NifMain
             base.Read(header, reader);
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return base.GetSize();
+            return base.GetSize(header);
         }
 
         public override string GetClassName()

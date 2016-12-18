@@ -5,6 +5,7 @@ using System.IO;
 
 namespace LODGenerator.NifMain
 {
+    [Serializable]
     internal class BSShaderTextureSet : NiObject
     {
         protected int numTextures;
@@ -27,22 +28,28 @@ namespace LODGenerator.NifMain
             base.Read(header, reader);
             this.numTextures = reader.ReadInt32();
             for (int index = 0; index < this.numTextures; ++index)
+            {
                 this.textures.Add(Utils.ReadSizedString(reader));
+            }
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.numTextures);
             for (int index = 0; index < this.numTextures; ++index)
+            {
                 Utils.WriteSizedString(writer, this.textures[index]);
+            }
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            uint num = base.GetSize() + 4U;
-            for (int index = 0; index < this.numTextures; ++index)
+            uint num = base.GetSize(header) + 4U;
+            for (int index = 0; index < this.textures.Count; ++index)
+            {
                 num += (uint)(4 + this.textures[index].Length);
+            }
             return num;
         }
 
@@ -55,9 +62,13 @@ namespace LODGenerator.NifMain
         {
             this.numTextures = value;
             if (this.numTextures <= this.textures.Count)
+            {
                 return;
+            }
             for (int count = this.textures.Count; count < this.numTextures; ++count)
+            {
                 this.textures.Add("");
+            }
         }
 
         public string GetTexture(int index)
@@ -79,7 +90,9 @@ namespace LODGenerator.NifMain
         {
             bool flag = base.IsDerivedType(type);
             if (!flag)
+            {
                 flag = type == "BSShaderTextureSet";
+            }
             return flag;
         }
     }

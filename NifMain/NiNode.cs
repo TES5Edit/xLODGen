@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LODGenerator.Common;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -24,21 +25,35 @@ namespace LODGenerator.NifMain
             base.Read(header, reader);
             this.numChildren = reader.ReadUInt32();
             for (int index = 0; (long)index < (long)this.numChildren; ++index)
+            {
                 this.children.Add(reader.ReadInt32());
-            this.numEffects = reader.ReadUInt32();
-            for (int index = 0; (long)index < (long)this.numEffects; ++index)
-                this.effects.Add(reader.ReadInt32());
+            }
+            if (header.GetUserVersion2() < 130)
+            {
+                this.numEffects = reader.ReadUInt32();
+                for (int index = 0; (long)index < (long)this.numEffects; ++index)
+                {
+                    this.effects.Add(reader.ReadInt32());
+                }
+            }
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.numChildren);
             for (int index = 0; (long)index < (long)this.numChildren; ++index)
+            {
                 writer.Write(this.children[index]);
-            writer.Write(this.numEffects);
-            for (int index = 0; (long)index < (long)this.numEffects; ++index)
-                writer.Write(this.effects[index]);
+            }
+            if (header.GetUserVersion2() < 130)
+            {
+                writer.Write(this.numEffects);
+                for (int index = 0; (long)index < (long)this.numEffects; ++index)
+                {
+                    writer.Write(this.effects[index]);
+                }
+            }
         }
 
         public void AddChild(int reference)
@@ -57,9 +72,17 @@ namespace LODGenerator.NifMain
             return this.numChildren;
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return (uint)((int)base.GetSize() + 4 + 4 * (int)this.numChildren + 4 + 4 * (int)this.numEffects);
+            if (header.GetUserVersion2() < 130)
+            {
+                return (uint)((int)base.GetSize(header) + 4 + 4 * (int)this.numChildren + 4 + 4 * (int)this.numEffects);
+            }
+            else
+            {
+                return (uint)((int)base.GetSize(header) + 4 + 4 * (int)this.numChildren);
+            }
+
         }
 
         public override string GetClassName()

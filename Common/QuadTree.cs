@@ -1,7 +1,8 @@
 ﻿using LODGenerator;
 using LODGenerator.NifMain;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace LODGenerator.Common
 {
@@ -14,30 +15,39 @@ namespace LODGenerator.Common
         public float sampleSize;
         public bool isLand;
 
-        public QuadTree(NiTriShapeData data, int quadLevel)
+        public QuadTree()
+        {
+            this.vertices = new List<Vector3>();
+            this.boundingBox = new BBox();
+            this.segments = new QuadTreeLeaf[0];
+            this.entirequad = new QuadTreeLeaf();
+            this.sampleSize = Game.sampleSize;
+        }
+
+        public QuadTree(ShapeDesc shapedesc, int quadLevel)
         {
             this.sampleSize = Game.sampleSize;
-            // water
-            if (data.GetBSNumUVSets() == 0)
+            // terrain/water
+            if (shapedesc.name.ToLower(CultureInfo.InvariantCulture).Contains("land") || !shapedesc.textures[0].Contains("default.dds"))
+            {
+                isLand = true;
+            }
+            else
             {
                 this.sampleSize = 1;
                 this.isLand = false;
             }
-            else
-            {
-                isLand = true;
-            }
-            this.vertices = data.GetVertices();
+            this.vertices = shapedesc.geometry.GetVertices();
             this.boundingBox = new BBox();
             this.boundingBox.Set(float.MaxValue, float.MinValue, float.MaxValue, float.MinValue, float.MaxValue, float.MinValue);
             this.segments = new QuadTreeLeaf[(int)(this.sampleSize * quadLevel * this.sampleSize * quadLevel)];
             for (int index = 0; index < (this.sampleSize * quadLevel) * (this.sampleSize * quadLevel); index++)
             {
-                this.segments[index] = this.CreateSegment(index, quadLevel, data.GetTriangles(), data.GetVertices());
+                this.segments[index] = this.CreateSegment(index, quadLevel, shapedesc.geometry.GetTriangles(), shapedesc.geometry.GetVertices());
                 boundingBox.GrowByBox(this.segments[index].boundingBox);
             }
             QuadTreeLeaf quadTreeLeaf = new QuadTreeLeaf();
-            List<Triangle> triangles = data.GetTriangles();
+            List<Triangle> triangles = shapedesc.geometry.GetTriangles();
             quadTreeLeaf.boundingBox.GrowByBox(boundingBox);
             quadTreeLeaf.triangles = triangles;
             this.entirequad = quadTreeLeaf;

@@ -115,9 +115,89 @@ namespace LODGenerator.NifMain
                 });
         }
 
-        public override uint GetSize()
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            return base.GetSize();
+            base.Write(header, writer);
+            writer.Write(this.applyMode);
+            writer.Write(this.textureCount);
+            Utils.WriteBool(writer, this.hasBaseTexture);
+            if (this.hasBaseTexture)
+            {
+                Utils.WriteTexDesc(writer, this.baseTexture);
+            }
+            Utils.WriteBool(writer, this.hasDarkTexture);
+            if (this.hasDarkTexture)
+            {
+                Utils.WriteTexDesc(writer, this.darkTexture);
+            }
+            Utils.WriteBool(writer, this.hasDetailTexture);
+            if (this.hasDetailTexture)
+            {
+                Utils.WriteTexDesc(writer, this.detailTexture);
+            }
+            Utils.WriteBool(writer, this.hasGlossTexture);
+            if (this.hasGlossTexture)
+            {
+                Utils.WriteTexDesc(writer, this.glossTexture);
+            }
+            Utils.WriteBool(writer, this.hasGlowTexture);
+            if (this.hasGlowTexture)
+            {
+                Utils.WriteTexDesc(writer, this.glowTexture);
+            }
+            Utils.WriteBool(writer, this.hasBumpMapTexture);
+            if (this.hasBumpMapTexture)
+            {
+                Utils.WriteTexDesc(writer, this.bumpMapTexture);
+                writer.Write(this.bumpMapLumaScale);
+                writer.Write(this.bumpMapLumaOffset);
+                writer.Write(this.bumpMapMatrix[0][0]);
+                writer.Write(this.bumpMapMatrix[1][0]);
+                writer.Write(this.bumpMapMatrix[0][1]);
+                writer.Write(this.bumpMapMatrix[1][1]);
+            }
+            Utils.WriteBool(writer, this.hasDecalTexture0);
+            if (this.hasDecalTexture0)
+            {
+                Utils.WriteTexDesc(writer, this.decalTexture0);
+            }
+            if (this.textureCount >= 8U)
+            {
+                Utils.WriteBool(writer, this.hasDecalTexture1);
+                if (this.hasDecalTexture1)
+                {
+                    Utils.WriteTexDesc(writer, this.decalTexture1);
+                }
+                if (this.textureCount >= 9U)
+                {
+                    Utils.WriteBool(writer, this.hasDecalTexture2);
+                    if (this.hasDecalTexture2)
+                    {
+                        Utils.WriteTexDesc(writer, this.decalTexture2);
+                    }
+                    if (this.textureCount >= 10U)
+                    {
+                        Utils.WriteBool(writer, this.hasDecalTexture3);
+                        if (this.hasDecalTexture3)
+                        {
+                            Utils.WriteTexDesc(writer, this.decalTexture3);
+                        }
+                    }
+                }
+            }
+            writer.Write(this.numShaderTextures);
+            for (int index = 0; (long)index < (long)this.numShaderTextures; ++index)
+            {
+                Utils.WriteBool(writer, this.shaderTextures[index].isUsed);
+                Utils.WriteTexDesc(writer, this.shaderTextures[index].textureData);
+                writer.Write(this.shaderTextures[index].mapIndex);
+            }
+        }
+
+        public override uint GetSize(NiHeader header)
+        {
+            // should update this, but not needed for oblivion
+            return base.GetSize(header);
         }
 
         public bool HasBaseTexture()
@@ -125,9 +205,39 @@ namespace LODGenerator.NifMain
             return this.hasBaseTexture;
         }
 
-        public TexDesc GetBaseTextureDesc()
+        public void SetHasBaseTexture(bool value)
+        {
+            this.hasBaseTexture = value;
+        }
+
+        public TexDesc GetBaseTexture()
         {
             return this.baseTexture;
+        }
+
+        public void SetBaseTexture(TexDesc value)
+        {
+            this.baseTexture = value;
+        }
+
+        public bool HasDarkTexture()
+        {
+            return this.hasDarkTexture;
+        }
+
+        public void SetHasDarkTexture(bool value)
+        {
+            this.hasDarkTexture = value;
+        }
+
+        public TexDesc GetDarkTexture()
+        {
+            return this.darkTexture;
+        }
+
+        public void SetDarkTexture(TexDesc value)
+        {
+            this.darkTexture = value;
         }
 
         public bool HasDetailTexture()
@@ -135,9 +245,94 @@ namespace LODGenerator.NifMain
             return this.hasDetailTexture;
         }
 
+        public void SetHasDetailTexture(bool value)
+        {
+            this.hasDetailTexture = value;
+        }
+
         public TexDesc GetDetailTexture()
         {
             return this.detailTexture;
+        }
+
+        public void SetDetailTexture(TexDesc value)
+        {
+            this.detailTexture = value;
+        }
+
+        public bool HasGlowTexture()
+        {
+            return this.hasGlowTexture;
+        }
+
+        public void SetHasGlowTexture(bool value)
+        {
+            this.hasGlowTexture = value;
+        }
+
+        public TexDesc GetGlowTexture()
+        {
+            return this.glowTexture;
+        }
+
+        public void SetGlowTexture(TexDesc value)
+        {
+            this.glowTexture = value;
+        }
+
+        public bool HasGlossTexture()
+        {
+            return this.hasGlossTexture;
+        }
+
+        public void SetHasGlossTexture(bool value)
+        {
+            this.hasGlossTexture = value;
+        }
+
+        public TexDesc GetGlossTexture()
+        {
+            return this.glossTexture;
+        }
+
+        public bool HasBumpMapTexture()
+        {
+            return this.hasBumpMapTexture;
+        }
+
+        public void SetHasBumpMapTexture(bool value)
+        {
+            this.hasBumpMapTexture = value;
+        }
+
+        public TexDesc GetBumpMapTexture()
+        {
+            return this.bumpMapTexture;
+        }
+
+        public void SetBumpMapTexture(TexDesc value)
+        {
+            this.bumpMapTexture = value;
+        }
+
+        public bool HasDecalTexture0()
+        {
+            return this.hasDecalTexture0;
+        }
+
+        public void SetHasDecalTexture0(bool value)
+        {
+            this.hasDecalTexture0 = value;
+        }
+
+        public TexDesc GetDecalTexture0()
+        {
+            return this.decalTexture0;
+        }
+
+        public void SetDecalTexture0(TexDesc value)
+        {
+            this.decalTexture0 = value;
         }
 
         public override string GetClassName()

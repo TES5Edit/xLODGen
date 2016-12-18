@@ -55,5 +55,45 @@ namespace LODGenerator.Common
             this.b = _b;
             this.a = _a;
         }
+
+        public static Color4 operator +(Color4 a, Color4 b)
+        {
+            Color4 v = new Color4(0, 0, 0, 0);
+            v[0] = a[0] + b[0];
+            v[1] = a[1] + b[1];
+            v[2] = a[2] + b[2];
+            v[3] = a[3] + b[3];
+            return v;
+        }
+
+        public static Color4 operator *(Color4 a, float b)
+        {
+            Color4 v = new Color4(0, 0, 0, 0);
+            v[0] = a[0] * b;
+            v[1] = a[1] * b;
+            v[2] = a[2] * b;
+            v[3] = a[3] * b;
+            return v;
+        }
+
+        public static Color4 operator *(Color4 a, double c)
+        {
+            return a * (float)c;
+        }
+
+        public static Color4 operator /(Color4 a, float b)
+        {
+            Color4 v = new Color4(0, 0, 0, 0);
+            v[0] = a[0] / b;
+            v[1] = a[1] / b;
+            v[2] = a[2] / b;
+            v[3] = a[3] / b;
+            return v;
+        }
+
+        public override string ToString()
+        {
+            return "[" + this.r + ", " + this.g + ", " + this.b + ", " + this.a + "]";
+        }
     }
 }

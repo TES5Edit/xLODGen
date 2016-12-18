@@ -29,6 +29,10 @@ namespace LODGenerator
         public bool removeUnseenFaces;
         public bool removeUnderwaterFaces;
         public bool ignoreMaterial;
+        public bool alphaDoublesided;
+        public bool useAlphaThreshold;
+        public bool useBacklightPower;
+        public bool dontGroup;
         public bool skyblivionTexPath;
         public float globalScale;
         public float eliminateSize;
@@ -44,9 +48,22 @@ namespace LODGenerator
         public StringList notHDTextureList;
         public StringList HDMeshList;
         public StringList notHDMeshList;
+        public StringList PassThruMeshList;
         private int quadLevel;
         private int quadIndex;
         private float quadOffset;
+
+        private static readonly Random getrandom = new Random();
+        private static readonly object syncLock = new object();
+
+        public static float GetRandomNumber()
+        {
+            lock (syncLock)
+            {
+                return (float)getrandom.NextDouble();
+            }
+        }
+
 
         public LODApp(string wsn, string od, string sd, LogFile lf)
         {
@@ -75,10 +92,14 @@ namespace LODGenerator
             double xoffset = pos - ((southWest % 4) * 4096);
             int num1 = (int)((double)xoffset / (double)this.quadOffset);
             if ((double)xoffset < 0.0)
+            {
                 --num1;
+            }
             int num3 = num1 * this.quadLevel;
             if (southWest % 4 != 0)
+            {
                 num3 += southWest % 4;
+            }
             return num3;
         }
 
@@ -101,14 +122,19 @@ namespace LODGenerator
                 }
                 if (!flag)
                 {
-                    QuadDesc quadDesc = new QuadDesc();
+                    QuadDesc quadDesc = new QuadDesc(true);
                     quadDesc.x = num3;
                     quadDesc.y = num4;
-                    quadDesc.statics = new List<StaticDesc>();
+                    //quadDesc.statics = new List<StaticDesc>();
                     quadDesc.statics.Add(staticDesc);
-                    quadDesc.outValues = new OutDesc();
+                    //quadDesc.outValues = new OutDesc();
                     quadDesc.outValues.totalTriCount = 0;
                     quadDesc.outValues.reducedTriCount = 0;
+                    //quadDesc.textureBlockIndex = new Dictionary<string, int>();
+                    //quadDesc.textureBlockIndexPassThru = new Dictionary<string, int>();
+                    //quadDesc.dataBlockIndex = new Dictionary<string, int>();
+                    //
+                    quadDesc.shaderBlockIndex = new Dictionary<string, int>();
                     list.Add(quadDesc);
                 }
                 flag = false;
@@ -118,7 +144,7 @@ namespace LODGenerator
 
         private void GenerateMultibound(NiFile file, BSMultiBoundNode node, QuadDesc curQuad, BBox bb)
         {
-            if ((Game.Mode != "fnv") || (Game.Mode == "fnv" && node.GetMultiBound() == -1))
+            if ((Game.Mode != "fo3") || (Game.Mode == "fo3" && node.GetMultiBound() == -1))
             {
                 BSMultiBound bsMultiBound = new BSMultiBound();
                 node.SetMultiBound(file.AddBlock((NiObject)bsMultiBound));
@@ -131,318 +157,30 @@ namespace LODGenerator
             }
         }
 
-        // get shader type
-        private string GetShaderType(NiFile file, NiTriShape shape)
-        {
-            string type = "";
-            if (file.GetVersion() > 335544325U)
-            {
-                if (shape.GetBSProperty(0) != -1)
-                {
-                    if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSLightingShaderProperty))
-                    {
-                        type = "lightingshader";
-                    }
-                    else if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSEffectShaderProperty))
-                    {
-                        type = "effectshader";
-                    }
-                    else if (shape.GetBSProperty(1) != -1 && file.GetBlockAtIndex(shape.GetBSProperty(1)).GetType() == typeof(BSEffectShaderProperty))
-                    {
-                        type = "effectshader";
-                    }
-
-                }
-            }
-            return type;
-        }
-
-        // get lighting shader
-        private BSLightingShaderProperty GetLightingShader(NiFile file, NiTriShape shape)
-        {
-            if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSLightingShaderProperty))
-            {
-                return (BSLightingShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        // get effect shader
-        private BSEffectShaderProperty GetEffectShader(NiFile file, NiTriShape shape)
-        {
-            if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSEffectShaderProperty))
-            {
-                return (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-            }
-            else if (shape.GetBSProperty(1) != -1 && file.GetBlockAtIndex(shape.GetBSProperty(1)).GetType() == typeof(BSEffectShaderProperty))
-            {
-                return (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(1));
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        // get Clamp_Mode
-        private uint GetTextureClampMode(NiFile file, NiTriShape shape)
-        {
-            uint flags = 3U;
-            if (file.GetVersion() > 335544325U)
-            {
-                if (shape.GetBSProperty(0) != -1)
-                {
-                    if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSLightingShaderProperty))
-                    {
-                        BSLightingShaderProperty lightingShaderProperty = (BSLightingShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        flags = lightingShaderProperty.GetTextureClampMode();
-                    }
-                    else if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSEffectShaderProperty))
-                    {
-                        BSEffectShaderProperty effectShaderProperty = (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        flags = effectShaderProperty.GetTextureClampMode();
-                    }
-                    else if (shape.GetBSProperty(1) != -1 && file.GetBlockAtIndex(shape.GetBSProperty(1)).GetType() == typeof(BSEffectShaderProperty))
-                    {
-                        BSEffectShaderProperty effectShaderProperty = (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(1));
-                        flags = effectShaderProperty.GetTextureClampMode();
-                    }
-                }
-            }
-            return flags;
-        }
-
-        // get EmissiveColor
-        private Color3 GetEmissiveColor(NiFile file, NiTriShape shape)
-        {
-            Color3 ec = new Color3(0f, 0f, 0f);
-            if (file.GetVersion() > 335544325U)
-            {
-                if (shape.GetBSProperty(0) != -1)
-                {
-                    if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSLightingShaderProperty))
-                    {
-                        BSLightingShaderProperty lightingShaderProperty = (BSLightingShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        ec = lightingShaderProperty.GetEmissiveColor();
-                    }
-                    else
-                    {
-                        BSEffectShaderProperty effectShaderProperty = (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        Color4 ec2 = new Color4(0f, 0f, 0f, 0f);
-                        ec2 = effectShaderProperty.GetEmissiveColor();
-                        ec[0] = ec2[0];
-                        ec[1] = ec2[1];
-                        ec[2] = ec2[2];
-                    }
-                }
-            }
-            return ec;
-        }
-
-        // get EmissiveMultiple
-        private float GetEmissiveMultiple(NiFile file, NiTriShape shape)
-        {
-            float em = 0f;
-            if (file.GetVersion() > 335544325U)
-            {
-                if (shape.GetBSProperty(0) != -1)
-                {
-                    if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSLightingShaderProperty))
-                    {
-                        BSLightingShaderProperty lightingShaderProperty = (BSLightingShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        em = lightingShaderProperty.GetEmissiveMultiple();
-                    }
-                    else
-                    {
-                        BSEffectShaderProperty effectShaderProperty = (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        em = effectShaderProperty.GetEmissiveMultiple();
-                    }
-                }
-            }
-            return em;
-        }
-
-        // get ShaderFlags1
-        private uint GetShaderFlags1(NiFile file, NiTriShape shape)
-        {
-            uint flags = 0;
-            if (file.GetVersion() > 335544325U)
-            {
-                if (shape.GetBSProperty(0) != -1)
-                {
-                    if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSLightingShaderProperty))
-                    {
-                        BSLightingShaderProperty lightingShaderProperty = (BSLightingShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        flags = lightingShaderProperty.GetShaderFlags1();
-                    }
-                    else if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSEffectShaderProperty))
-                    {
-                        BSEffectShaderProperty effectShaderProperty = (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        flags = effectShaderProperty.GetShaderFlags1();
-                    }
-                    else if (shape.GetBSProperty(1) != -1 && file.GetBlockAtIndex(shape.GetBSProperty(1)).GetType() == typeof(BSEffectShaderProperty))
-                    {
-                        BSEffectShaderProperty effectShaderProperty = (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(1));
-                        flags = effectShaderProperty.GetShaderFlags1();
-                    }
-                }
-            }
-            return flags;
-        }
-
-        // get ShaderFlags2 to test for double-sided
-        private uint GetShaderFlags2(NiFile file, NiTriShape shape)
-        {
-            uint flags = 0;
-            if (file.GetVersion() > 335544325U)
-            {
-                if (shape.GetBSProperty(0) != -1)
-                {
-                    if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSLightingShaderProperty))
-                    {
-                        BSLightingShaderProperty lightingShaderProperty = (BSLightingShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        flags = lightingShaderProperty.GetShaderFlags2();
-                    }
-                    else if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSEffectShaderProperty))
-                    {
-                        BSEffectShaderProperty effectShaderProperty = (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        flags = effectShaderProperty.GetShaderFlags2();
-                    }
-                    else if (shape.GetBSProperty(1) != -1 && file.GetBlockAtIndex(shape.GetBSProperty(1)).GetType() == typeof(BSEffectShaderProperty))
-                    {
-                        BSEffectShaderProperty effectShaderProperty = (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(1));
-                        flags = effectShaderProperty.GetShaderFlags2();
-                    }
-                }
-            }
-            return flags;
-        }
-
-        private string[] GetMeshTextures(NiFile file, NiTriShape shape)
-        {
-            string[] strArray = new string[9];
-            for (int index = 0; index < strArray.Count(); ++index)
-            {
-                strArray[index] = "";
-            }
-            if ((file.GetVersion() > 335544325U) && (file.GetUserVersion() > 11U))
-            {
-                if (shape.GetBSProperty(0) != -1)
-                {
-                    if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSLightingShaderProperty))
-                    {
-                        BSLightingShaderProperty lightingShaderProperty = (BSLightingShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                        BSShaderTextureSet shaderTextureSet = (BSShaderTextureSet)file.GetBlockAtIndex(lightingShaderProperty.GetTextureSet());
-                        for (int index = 0; index < shaderTextureSet.GetNumTextures(); ++index)
-                        {
-                            strArray[index] = shaderTextureSet.GetTexture(index).ToLower(CultureInfo.InvariantCulture);
-                        }
-                    }
-                    else
-                    {
-                        if (file.GetBlockAtIndex(shape.GetBSProperty(0)).GetType() == typeof(BSEffectShaderProperty))
-                        {
-                            BSEffectShaderProperty effectShaderProperty = (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(0));
-                            strArray[0] = effectShaderProperty.GetSourceTexture().ToLower(CultureInfo.InvariantCulture);
-                            strArray[1] = "textures\\default_n.dds";
-                        }
-                        else if (shape.GetBSProperty(1) != -1 && file.GetBlockAtIndex(shape.GetBSProperty(1)).GetType() == typeof(BSEffectShaderProperty))
-                        {
-                            BSEffectShaderProperty effectShaderProperty = (BSEffectShaderProperty)file.GetBlockAtIndex(shape.GetBSProperty(1));
-                            strArray[0] = effectShaderProperty.GetSourceTexture().ToLower(CultureInfo.InvariantCulture);
-                            strArray[1] = "textures\\default_n.dds";
-                        }
-
-                    }
-                }
-                else
-                {
-                    strArray[0] = "textures\\defaultdiffuse.dds";
-                    strArray[1] = "textures\\default_n.dds";
-                }
-            }
-            else
-            {
-                NiTexturingProperty texturingProperty = (NiTexturingProperty)null;
-                for (int index = 0; (long)index < (long)shape.GetNumProperties(); ++index)
-                {
-                    NiProperty niProperty = (NiProperty)file.GetBlockAtIndex(shape.GetProperty(index));
-                    if (niProperty.GetType() == typeof(BSShaderPPLightingProperty))
-                    {
-                        BSShaderPPLightingProperty lightingShaderProperty = (BSShaderPPLightingProperty)file.GetBlockAtIndex(shape.GetProperty(index));
-                        BSShaderTextureSet shaderTextureSet = (BSShaderTextureSet)file.GetBlockAtIndex(lightingShaderProperty.GetTextureSet());
-                        for (int index2 = 0; index2 < shaderTextureSet.GetNumTextures(); ++index2)
-                        {
-                            strArray[index2] = shaderTextureSet.GetTexture(index2).ToLower(CultureInfo.InvariantCulture);
-                        }
-                        break;
-                    }
-                    if (niProperty.GetType() == typeof(NiTexturingProperty))
-                    {
-                        texturingProperty = (NiTexturingProperty)niProperty;
-                        string str1 = "textures\\defaultdiffuse.dds";
-                        string str2 = "textures\\default_n.dds";
-                        if (texturingProperty != null && texturingProperty.HasBaseTexture())
-                        {
-                            TexDesc baseTextureDesc = texturingProperty.GetBaseTextureDesc();
-                            NiSourceTexture niSourceTexture = (NiSourceTexture)null;
-                            if (baseTextureDesc.source != -1)
-                                niSourceTexture = (NiSourceTexture)file.GetBlockAtIndex(baseTextureDesc.source);
-                            else if (texturingProperty.HasDetailTexture())
-                            {
-                                TexDesc detailTexture = texturingProperty.GetDetailTexture();
-                                if (detailTexture.source != -1)
-                                    niSourceTexture = (NiSourceTexture)file.GetBlockAtIndex(detailTexture.source);
-                            }
-                            if (this.skyblivionTexPath)
-                            {
-                                str1 = niSourceTexture.GetFileName().ToLower(CultureInfo.InvariantCulture).Replace("textures", "textures\\tes4");
-                                str2 = str1.Replace(".dds", "_n.dds");
-                            }
-                            else
-                            {
-                                str1 = niSourceTexture.GetFileName().ToLower(CultureInfo.InvariantCulture);
-                                str2 = str1.Replace(".dds", "_n.dds");
-                            }
-                        }
-                        strArray[0] = str1.ToLower(CultureInfo.InvariantCulture);
-                        strArray[1] = str2.ToLower(CultureInfo.InvariantCulture);
-                        break;
-                    }
-                    strArray[0] = "textures\\defaultdiffuse.dds";
-                    strArray[1] = "textures\\default_n.dds";
-                }
-            }
-            for (int index = 0; index < strArray.Count(); ++index)
-            {
-                if (strArray[index].Contains("textures\\"))
-                {
-                    strArray[index] = strArray[index].Remove(0, strArray[index].IndexOf("textures\\"));
-                }
-            }
-            return strArray;
-        }
-
         private void GenerateSegments(QuadDesc curQuad, ref ShapeDesc shape)
         {
             // use x, y of object instead of boundingbox center to determine segment
-            int num1 = (int)((double)shape.x / ((double)this.quadOffset / 4.0));
-            int num2 = (int)((double)shape.y / ((double)this.quadOffset / 4.0));
-            if (num1 > 3)
-                num1 = 3;
-            if (num1 < 0)
-                num1 = 0;
-            if (num2 > 3)
-                num2 = 3;
-            if (num2 < 0)
-                num2 = 0;
             SegmentDesc segmentDesc = new SegmentDesc();
-            segmentDesc.id = 4 * num1 + num2;
+            if (this.quadLevel == 4)
+            {
+                int num1 = (int)((double)shape.x / ((double)this.quadOffset / 4.0));
+                int num2 = (int)((double)shape.y / ((double)this.quadOffset / 4.0));
+                if (num1 > 3)
+                    num1 = 3;
+                if (num1 < 0)
+                    num1 = 0;
+                if (num2 > 3)
+                    num2 = 3;
+                if (num2 < 0)
+                    num2 = 0;
+                segmentDesc.id = 4 * num1 + num2;
+            }
+            else
+            {
+                segmentDesc.id = 0;
+            }
             segmentDesc.startTriangle = 0U;
-            segmentDesc.numTriangles = shape.data.GetNumTriangles();
+            segmentDesc.numTriangles = shape.geometry.GetNumTriangles();
             shape.segments = new List<SegmentDesc>();
             shape.segments.Add(segmentDesc);
         }
@@ -451,11 +189,15 @@ namespace LODGenerator
         {
             List<ShapeDesc> list = new List<ShapeDesc>();
             if (parentNode == null || parentNode.IsHidden())
+            {
                 return list;
+            }
             int nameIndex = parentNode.GetNameIndex();
             string str = nameIndex != -1 ? file.GetStringAtIndex(nameIndex) : parentNode.GetName();
             if (str != null && str.ToLower(CultureInfo.InvariantCulture).Contains("editormarker"))
+            {
                 return list;
+            }
             Matrix44 parentTransform1 = parentNode.GetTransform() * parentTransform;
             if (ignoreTransRot.Any(stat.staticModels[level].Contains))
             {
@@ -466,335 +208,308 @@ namespace LODGenerator
             int numGeom = -1;
             for (int index = 0; (long)index < (long)numChildren; ++index)
             {
-                NiObject blockAtIndex = file.GetBlockAtIndex(parentNode.GetChildAtIndex(index));
-                if (blockAtIndex != null)
+                if (parentNode.GetChildAtIndex(index) != -1)
                 {
-                    if (blockAtIndex.IsDerivedType("NiNode"))
+                    NiObject blockAtIndex = file.GetBlockAtIndex(parentNode.GetChildAtIndex(index));
+                    if (blockAtIndex != null)
                     {
-                        list.AddRange((IEnumerable<ShapeDesc>)this.IterateNodes(quad, stat, level, file, (NiNode)blockAtIndex, parentTransform1, parentScale1));
-                    }
-                    else if (blockAtIndex.IsDerivedType("NiTriBasedGeom"))
-                    {
-                        numGeom++;
-                        NiTriBasedGeom geomOld = (NiTriBasedGeom)blockAtIndex;
-                        if (index + 1 < numChildren)
+                        if (blockAtIndex.IsDerivedType("NiNode"))
                         {
-                            NiObject blockAtIndexNext = file.GetBlockAtIndex(parentNode.GetChildAtIndex(index + 1));
-                            if (blockAtIndexNext.IsDerivedType("NiTriBasedGeom"))
+                            list.AddRange((IEnumerable<ShapeDesc>)this.IterateNodes(quad, stat, level, file, (NiNode)blockAtIndex, parentTransform1, parentScale1));
+                        }
+                        else if (blockAtIndex.IsDerivedType("NiTriBasedGeom"))
+                        {
+                            numGeom++;
+                            /*NiTriBasedGeom geomOld = (NiTriBasedGeom)blockAtIndex;
+                            if (index + 1 < numChildren)
                             {
-                                NiTriBasedGeom geomOld2 = (NiTriBasedGeom)blockAtIndexNext;
-                                if (geomOld.GetData() == geomOld2.GetData())
+                                NiObject blockAtIndexNext = file.GetBlockAtIndex(parentNode.GetChildAtIndex(index + 1));
+                                if (blockAtIndexNext.IsDerivedType("NiTriBasedGeom"))
                                 {
-                                    NiTriBasedGeom geomNew = new NiTriBasedGeom();
-                                    geomNew.SetFlags(14);
-                                    geomNew.SetTranslation(geomOld.GetTranslation());
-                                    geomNew.SetRotation(geomOld.GetRotation());
-                                    geomNew.SetScale(geomOld.GetScale());
-                                    geomNew.SetNumProperties(geomOld.GetNumProperties());
-                                    for (int index2 = 0; (long)index2 < (long)geomOld.GetNumProperties(); ++index2)
+                                    NiTriBasedGeom geomOld2 = (NiTriBasedGeom)blockAtIndexNext;
+                                    if (geomOld.GetData() != -1 && geomOld2.GetData() != -1 && geomOld.GetData() == geomOld2.GetData())
                                     {
-                                        geomNew.SetProperties(geomOld.GetProperty(index2));
+                                        NiTriBasedGeom geomNew = new NiTriBasedGeom();
+                                        geomNew.SetFlags(14);
+                                        geomNew.SetTranslation(geomOld.GetTranslation());
+                                        geomNew.SetRotation(geomOld.GetRotation());
+                                        geomNew.SetScale(geomOld.GetScale());
+                                        geomNew.SetNumProperties(geomOld.GetNumProperties());
+                                        for (int index2 = 0; (long)index2 < (long)geomOld.GetNumProperties(); ++index2)
+                                        {
+                                            geomNew.SetProperties(geomOld.GetProperty(index2));
+                                        }
+                                        NiTriShapeData dataOld = (NiTriShapeData)file.GetBlockAtIndex(geomOld.GetData());
+                                        NiTriShapeData dataNew = new NiTriShapeData();
+                                        dataNew.SetNumVertices(dataOld.GetNumVertices());
+                                        dataNew.SetHasVertices(dataOld.HasVertices());
+                                        dataNew.SetVertices(new List<Vector3>(dataOld.GetVertices()));
+                                        dataNew.SetNumUVSets(dataOld.GetNumUVSets());
+                                        dataNew.SetHasNormals(dataOld.HasNormals());
+                                        dataNew.SetNormals(new List<Vector3>(dataOld.GetNormals()));
+                                        dataNew.SetTangents(new List<Vector3>(dataOld.GetTangents()));
+                                        dataNew.SetBitangents(new List<Vector3>(dataOld.GetBitangents()));
+                                        dataNew.SetCenter(dataOld.GetCenter());
+                                        dataNew.SetRadius(dataOld.GetRadius());
+                                        dataNew.SetHasVertexColors(dataOld.HasVertexColors());
+                                        dataNew.SetVertexColors(dataOld.GetVertexColors());
+                                        dataNew.SetUVCoords(dataOld.GetUVCoords());
+                                        dataNew.SetConsistencyFlags(dataOld.GetConsistencyFlags());
+                                        dataNew.SetNumTriangles(dataOld.GetNumTriangles());
+                                        dataNew.SetNumTrianglePoints(dataOld.GetNumTrianglePoints());
+                                        dataNew.SetHasTriangles(dataOld.HasTriangles());
+                                        dataNew.SetTriangles(new List<Triangle>(dataOld.GetTriangles()));
+                                        int newdata = file.AddBlock(dataNew);
+                                        geomNew.SetData(newdata);
+                                        int newblock = file.AddBlock(geomNew);
+                                        blockAtIndex = file.GetBlockAtIndex(newblock);
                                     }
-                                    NiTriShapeData dataOld = (NiTriShapeData)file.GetBlockAtIndex(geomOld.GetData());
-                                    NiTriShapeData dataNew = new NiTriShapeData();
-                                    dataNew.SetNumVertices(dataOld.GetNumVertices());
-                                    dataNew.SetHasVertices(dataOld.HasVertices());
-                                    dataNew.SetVertices(new List<Vector3>(dataOld.GetVertices()));
-                                    dataNew.SetNumUVSets(dataOld.GetBSNumUVSets());
-                                    dataNew.SetHasNormals(dataOld.HasNormals());
-                                    dataNew.SetNormals(new List<Vector3>(dataOld.GetNormals()));
-                                    dataNew.SetTangents(new List<Vector3>(dataOld.GetTangents()));
-                                    dataNew.SetBitangents(new List<Vector3>(dataOld.GetBitangents()));
-                                    dataNew.SetCenter(dataOld.GetCenter());
-                                    dataNew.SetRadius(dataOld.GetRadius());
-                                    dataNew.SetHasVertexColors(dataOld.HasVertexColors());
-                                    dataNew.SetVertexColors(dataOld.GetVertexColors());
-                                    dataNew.SetUVCoords(dataOld.GetUVCoords());
-                                    dataNew.SetConsistencyFlags(dataOld.GetConsistencyFlags());
-                                    dataNew.SetNumTriangles(dataOld.GetNumTriangles());
-                                    dataNew.SetNumTrianglePoints(dataOld.GetNumTrianglePoints());
-                                    dataNew.SetHasTriangles(dataOld.HasTriangles());
-                                    dataNew.SetTriangles(new List<Triangle>(dataOld.GetTriangles()));
-                                    int newdata = file.AddBlock(dataNew);
-                                    geomNew.SetData(newdata);
-                                    int newblock = file.AddBlock(geomNew);
-                                    blockAtIndex = file.GetBlockAtIndex(newblock);
+                                }
+                            }*/
+
+                            NiTriBasedGeom geom = (NiTriBasedGeom)blockAtIndex;
+                            if (geom.GetSkinInstance() == -1)
+                            {
+                                ShapeDesc shapeDesc = new ShapeDesc();
+                                if (!dontGroup && (stat.staticFlags & 1) == 1)
+                                {
+                                    shapeDesc = this.GroupShape(quad, stat, file, (NiTriBasedGeom)blockAtIndex, parentTransform1, parentScale1, numGeom);
+                                }
+                                else
+                                {
+                                    shapeDesc = this.TransformShape(quad, stat, file, (NiTriBasedGeom)blockAtIndex, parentTransform1, parentScale1, numGeom);
+                                }
+                                if (shapeDesc != null && shapeDesc.geometry != null)
+                                {
+                                    //logFile.WriteLog(shapeDesc.material + shapeDesc.shaderType + shapeDesc.shaderHash);
+                                    list.Add(shapeDesc);
                                 }
                             }
                         }
-
-                        ShapeDesc shapeDesc = this.TransformShape(quad, stat, file, (NiTriBasedGeom)blockAtIndex, parentTransform1, parentScale1, numGeom);
-                        if (shapeDesc != null && shapeDesc.shape != null)
+                        else if (blockAtIndex.IsDerivedType("BSTriShape"))
                         {
-                            //logFile.WriteLog(shapeDesc.material + shapeDesc.shaderType + shapeDesc.shaderHash);
-                            list.Add(shapeDesc);
+                            numGeom++;
+                            BSTriShape geomOld = (BSTriShape)blockAtIndex;
+                            NiTriBasedGeom geomNew = new NiTriBasedGeom();
+                            if (index < numChildren)
+                            {
+                                geomNew.SetFlags(14);
+                                geomNew.SetTranslation(geomOld.GetTranslation());
+                                geomNew.SetRotation(geomOld.GetRotation());
+                                geomNew.SetScale(geomOld.GetScale());
+                                geomNew.SetNumProperties(geomOld.GetNumProperties());
+                                for (int index2 = 0; (long)index2 < (long)geomOld.GetNumProperties(); ++index2)
+                                {
+                                    geomNew.SetProperties(geomOld.GetProperty(index2));
+                                }
+                                NiTriShapeData dataNew = new NiTriShapeData();
+                                /*dataNew.SetNumVertices(dataOld.GetNumVertices());
+                                dataNew.SetHasVertices(dataOld.HasVertices());
+                                dataNew.SetVertices(new List<Vector3>(dataOld.GetVertices()));
+                                dataNew.SetNumUVSets(dataOld.GetBSNumUVSets());
+                                dataNew.SetHasNormals(dataOld.HasNormals());
+                                dataNew.SetNormals(new List<Vector3>(dataOld.GetNormals()));
+                                dataNew.SetTangents(new List<Vector3>(dataOld.GetTangents()));
+                                dataNew.SetBitangents(new List<Vector3>(dataOld.GetBitangents()));
+                                dataNew.SetCenter(dataOld.GetCenter());
+                                dataNew.SetRadius(dataOld.GetRadius());
+                                dataNew.SetHasVertexColors(dataOld.HasVertexColors());
+                                dataNew.SetVertexColors(dataOld.GetVertexColors());
+                                dataNew.SetUVCoords(dataOld.GetUVCoords());
+                                dataNew.SetConsistencyFlags(dataOld.GetConsistencyFlags());
+                                dataNew.SetNumTriangles(dataOld.GetNumTriangles());
+                                dataNew.SetNumTrianglePoints(dataOld.GetNumTrianglePoints());
+                                dataNew.SetHasTriangles(dataOld.HasTriangles());
+                                dataNew.SetTriangles(new List<Triangle>(dataOld.GetTriangles()));
+                                int newdata = file.AddBlock(dataNew);
+                                geomNew.SetData(newdata);
+                                int newblock = file.AddBlock(geomNew);
+                                blockAtIndex = file.GetBlockAtIndex(newblock);*/
+
+                            }
+
+                            ShapeDesc shapeDesc = this.TransformShape(quad, stat, file, (NiTriBasedGeom)geomNew, parentTransform1, parentScale1, numGeom);
+                            if (shapeDesc != null && shapeDesc.geometry != null)
+                            {
+                                //logFile.WriteLog(shapeDesc.material + shapeDesc.shaderType + shapeDesc.shaderHash);
+                                list.Add(shapeDesc);
+                            }
                         }
                     }
                 }
             }
-            /* 
-            if (useOptimizer)
+            return list;
+        }
+
+        private ShapeDesc GroupShape(QuadDesc quad, StaticDesc stat, NiFile file, NiTriBasedGeom geom, Matrix44 parentTransform, float parentScale, int numGeom)
+        {
+            BBox bbox = new BBox(float.MaxValue, float.MinValue, float.MaxValue, float.MinValue, float.MaxValue, float.MinValue);
+            ShapeDesc shapedesc = new ShapeDesc(this.gameDir, file, geom, stat, this.quadIndex, PassThruMeshList, skyblivionTexPath, useOptimizer, fixTangents, false, verbose, this.logFile);
+
+            parentTransform *= stat.transrot;
+            parentScale *= stat.transscale;
+
+            Matrix33 matrix33_1 = new Matrix33(true);
+            Matrix33 matrix33_2 = new Matrix33(true);
+            Matrix33 matrix33_3 = new Matrix33(true);
+            matrix33_1.SetRotationX(Utils.ToRadians(-stat.rotX));
+            matrix33_2.SetRotationY(Utils.ToRadians(-stat.rotY));
+            matrix33_3.SetRotationZ(Utils.ToRadians(-stat.rotZ));
+            Matrix44 matrix44 = new Matrix44(new Matrix33(true) * matrix33_1 * matrix33_2 * matrix33_3, new Vector3(stat.x, stat.y, stat.z), 1f);
+
+            List<Vector3> vertices = new List<Vector3>(shapedesc.geometry.GetVertices());
+            if (geom.GetClassName() == "NiTriStrips")
             {
-                List<ShapeDesc> list2 = new List<ShapeDesc>();
-                for (int shapeIndex = 0; shapeIndex < list.Count; shapeIndex++)
+                List<int> extradatalist = geom.GetExtraData();
+                if (extradatalist.Count == 1)
                 {
-                    ShapeDesc shapeDesc = list[shapeIndex];
-                    NiTriShapeData data = shapeDesc.data;
-                    List<Triangle> triangles = data.GetTriangles();
-                    if (data.HasVertexColors() && triangles.Count != 0)
+                    NiBinaryExtraData extradata = (NiBinaryExtraData)file.GetBlockAtIndex(extradatalist[0]);
+                    shapedesc.geometry.SetTangents(extradata.GetTangents());
+                    shapedesc.geometry.SetBitangents(extradata.GetBitangents());
+                }
+            }
+            for (int index = 0; index < vertices.Count; ++index)
+            {
+                bbox.GrowByVertex(vertices[index]);
+                if (Game.Mode != "merge4" && Game.Mode != "merge5")
+                {
+                    vertices[index] /= (float)this.quadLevel;
+                }
+            }
+            shapedesc.geometry.SetVertices(vertices);
+            shapedesc.x = stat.x;
+            shapedesc.y = stat.y;
+            shapedesc.boundingBox = bbox;
+            if (shapedesc.material == "")
+            {
+                shapedesc.material = stat.materialName;
+            }
+            shapedesc.enableParent = stat.enableParent;
+            shapedesc.isHighDetail = false;
+            // only snow/ash shader care about HD flag -> use vertex color alpha for shader
+            if (stat.materialName != "" && useHDFlag)
+            {
+                if ((stat.staticFlags & 131072) == 131072)
+                {
+                    if (HDMeshList.Any(stat.staticModels[this.quadIndex].ToLower(CultureInfo.InvariantCulture).Contains))
                     {
-                        NiTriShapeData data1 = new NiTriShapeData();
-                        NiTriShapeData data2 = new NiTriShapeData();
-                        List<Color4> vertexcolors = data.GetVertexColors();
-                        bool vertexcolors_white = true;
-                        bool vertexcolors_colors = true;
-                        if (vertexcolors_white && vertexcolors_colors)
+                        shapedesc.isHighDetail = true;
+                    }
+                    else if (notHDMeshList.Any(stat.staticModels[this.quadIndex].ToLower(CultureInfo.InvariantCulture).Contains))
+                    {
+                        shapedesc.isHighDetail = false;
+                    }
+                    else
+                    {
+                        shapedesc.isHighDetail = true;
+                    }
+                }
+            }
+            if (shapedesc.isPassThru)
+            {
+                shapedesc.hasVertexColor = shapedesc.geometry.HasVertexColors();
+            }
+            else
+            {
+                if (shapedesc.name != "")
+                {
+                    string key = (stat.refID + "_" + numGeom + "_" + shapedesc.name).ToLower(CultureInfo.InvariantCulture);
+                    if (AltTextureList.Contains(key))
+                    {
+                        AltTextureDesc altTexDesc = new AltTextureDesc();
+                        altTexDesc = AltTextureList.Get(key);
+                        if ((shapedesc.textures[0].Contains("\\lod") && altTexDesc.textures[0].Contains("\\lod")) || ((!shapedesc.textures[0].Contains("\\lod") && !altTexDesc.textures[0].Contains("\\lod"))))
                         {
-                            Dictionary<ushort, ushort>[] dictionary = new Dictionary<ushort, ushort>[] { new Dictionary<ushort, ushort>(), new Dictionary<ushort, ushort>() };
-                            List<Vector3> vertices = data.GetVertices();
-                            List<UVCoord> uvcoords = data.GetUVCoords();
-                            List<Vector3> normals = data.GetNormals();
-                            List<Vector3> tangents = data.GetTangents();
-                            List<Vector3> bitangents = data.GetBitangents();
-                            List<Triangle>[] triangles1 = new List<Triangle>[] { new List<Triangle>(), new List<Triangle>() };
-                            List<Vector3>[] vertices1 = new List<Vector3>[] { new List<Vector3>(), new List<Vector3>() };
-                            List<UVCoord>[] uvcoords1 = new List<UVCoord>[] { new List<UVCoord>(), new List<UVCoord>() };
-                            List<Color4>[] vertexcolors1 = new List<Color4>[] { new List<Color4>(), new List<Color4>() };
-                            List<Vector3>[] normals1 = new List<Vector3>[] { new List<Vector3>(), new List<Vector3>() };
-                            List<Vector3>[] tangents1 = new List<Vector3>[] { new List<Vector3>(), new List<Vector3>() };
-                            List<Vector3>[] bitangents1 = new List<Vector3>[] { new List<Vector3>(), new List<Vector3>() };
-                            UInt16[] index2 = new UInt16[] { 0, 0 };
-
-                            for (int index = 0; index < triangles.Count; ++index)
+                            for (int index = 0; index < altTexDesc.textures.Count(); index++)
                             {
-                                ushort indexA = triangles[index][0];
-                                ushort indexB = triangles[index][1];
-                                ushort indexC = triangles[index][2];
-                                float colorA = vertexcolors[indexA][0] + vertexcolors[indexA][1] + vertexcolors[indexA][2];
-                                float colorB = vertexcolors[indexB][0] + vertexcolors[indexB][1] + vertexcolors[indexB][2];
-                                float colorC = vertexcolors[indexC][0] + vertexcolors[indexC][1] + vertexcolors[indexC][2];
-
-                                int shapeSplit = new int();
-                                if (colorA > 2.6f && colorB > 2.6f && colorC > 2.6f)
-                                {
-                                    shapeSplit = 0;
-                                }
-                                else
-                                {
-                                    shapeSplit = 1;
-                                }
-                                if (!dictionary[shapeSplit].ContainsKey(indexA))
-                                {
-                                    dictionary[shapeSplit].Add(indexA, index2[shapeSplit]);
-                                    vertices1[shapeSplit].Add(vertices[indexA]);
-                                    if (uvcoords.Count != 0)
-                                    {
-                                        uvcoords1[shapeSplit].Add(uvcoords[indexA]);
-                                    }
-                                    if (shapeSplit == 1 && vertexcolors.Count != 0)
-                                    {
-                                        vertexcolors1[shapeSplit].Add(vertexcolors[indexA]);
-                                    }
-                                    if (normals.Count != 0)
-                                    {
-                                        normals1[shapeSplit].Add(normals[indexA]);
-                                    }
-                                    if (tangents.Count != 0)
-                                    {
-                                        tangents1[shapeSplit].Add(tangents[indexA]);
-                                    }
-                                    if (bitangents.Count != 0)
-                                    {
-                                        bitangents1[shapeSplit].Add(bitangents[indexA]);
-                                    }
-                                    indexA = index2[shapeSplit];
-                                    ++index2[shapeSplit];
-                                }
-                                else
-                                {
-                                    indexA = dictionary[shapeSplit][indexA];
-                                }
-                                if (!dictionary[shapeSplit].ContainsKey(indexB))
-                                {
-                                    dictionary[shapeSplit].Add(indexB, index2[shapeSplit]);
-                                    vertices1[shapeSplit].Add(vertices[indexB]);
-                                    if (uvcoords.Count != 0)
-                                    {
-                                        uvcoords1[shapeSplit].Add(uvcoords[indexB]);
-                                    }
-                                    if (shapeSplit == 1 && vertexcolors.Count != 0)
-                                    {
-                                        vertexcolors1[shapeSplit].Add(vertexcolors[indexB]);
-                                    }
-                                    if (normals.Count != 0)
-                                    {
-                                        normals1[shapeSplit].Add(normals[indexB]);
-                                    }
-                                    if (tangents.Count != 0)
-                                    {
-                                        tangents1[shapeSplit].Add(tangents[indexB]);
-                                    }
-                                    if (bitangents.Count != 0)
-                                    {
-                                        bitangents1[shapeSplit].Add(bitangents[indexB]);
-                                    }
-                                    indexB = index2[shapeSplit];
-                                    ++index2[shapeSplit];
-                                }
-                                else
-                                {
-                                    indexB = dictionary[shapeSplit][indexB];
-                                }
-                                if (!dictionary[shapeSplit].ContainsKey(indexC))
-                                {
-                                    dictionary[shapeSplit].Add(indexC, index2[shapeSplit]);
-                                    vertices1[shapeSplit].Add(vertices[indexC]);
-                                    if (uvcoords.Count != 0)
-                                    {
-                                        uvcoords1[shapeSplit].Add(uvcoords[indexC]);
-                                    }
-                                    if (shapeSplit == 1 && vertexcolors.Count != 0)
-                                    {
-                                        vertexcolors1[shapeSplit].Add(vertexcolors[indexC]);
-                                    }
-                                    if (normals.Count != 0)
-                                    {
-                                        normals1[shapeSplit].Add(normals[indexC]);
-                                    }
-                                    if (tangents.Count != 0)
-                                    {
-                                        tangents1[shapeSplit].Add(tangents[indexC]);
-                                    }
-                                    if (bitangents.Count != 0)
-                                    {
-                                        bitangents1[shapeSplit].Add(bitangents[indexC]);
-                                    }
-                                    indexC = index2[shapeSplit];
-                                    ++index2[shapeSplit];
-                                }
-                                else
-                                {
-                                    indexC = dictionary[shapeSplit][indexC];
-                                }
-                                triangles1[shapeSplit].Add(new Triangle(indexA, indexB, indexC));
-                            }
-
-                            if (triangles1[0].Count != 0)
-                            {
-                                ShapeDesc shapeDesc1 = new ShapeDesc();
-                                shapeDesc1.shape = shapeDesc.shape;
-                                shapeDesc1.material = shapeDesc.material;
-                                shapeDesc1.textures = shapeDesc.textures;
-                                shapeDesc1.isHighDetail = shapeDesc.isHighDetail;
-                                shapeDesc1.hasVertexColor = false;
-                                shapeDesc1.isDoubleSided = shapeDesc.isDoubleSided;
-                                shapeDesc1.TextureClampMode = shapeDesc.TextureClampMode;
-                                shapeDesc1.boundingBox = shapeDesc.boundingBox;
-                                shapeDesc1.x = shapeDesc.x;
-                                shapeDesc1.y = shapeDesc.y;
-                                shapeDesc1.segments = shapeDesc.segments;
-                                data1.SetNumVertices((ushort)vertices1[0].Count);
-                                data1.SetHasVertices(true);
-                                data1.SetNumUVSets(4097);
-                                data1.SetHasNormals(true);
-                                data1.SetCenter(data.GetCenter());
-                                data1.SetRadius(data.GetRadius());
-                                data1.SetConsistencyFlags(data.GetConsistencyFlags());
-                                data1.SetNumTriangles((ushort)triangles1[0].Count);
-                                data1.SetNumTrianglePoints((uint)triangles1[0].Count * 3);
-                                data1.SetHasTriangles(true);
-                                data1.SetHasVertexColors(false);
-                                data1.SetVertices(vertices1[0]);
-                                data1.SetNormals(normals1[0]);
-                                data1.SetTangents(tangents1[0]);
-                                data1.SetBitangents(bitangents1[0]);
-                                data1.SetUVCoords(uvcoords1[0]);
-                                //data1.SetVertexColors(vertexcolors1[0]);
-                                data1.SetTriangles(triangles1[0]);
-                                shapeDesc1.data = data1;
-                                list2.Add(shapeDesc1);
-                            }
-                            if (triangles1[1].Count != 0)
-                            {
-                                ShapeDesc shapeDesc2 = new ShapeDesc();
-                                shapeDesc2.shape = shapeDesc.shape;
-                                shapeDesc2.material = shapeDesc.material;
-                                shapeDesc2.textures = shapeDesc.textures;
-                                shapeDesc2.isHighDetail = shapeDesc.isHighDetail;
-                                shapeDesc2.hasVertexColor = true;
-                                shapeDesc2.isDoubleSided = shapeDesc.isDoubleSided;
-                                shapeDesc2.TextureClampMode = shapeDesc.TextureClampMode;
-                                shapeDesc2.boundingBox = shapeDesc.boundingBox;
-                                shapeDesc2.x = shapeDesc.x;
-                                shapeDesc2.y = shapeDesc.y;
-                                shapeDesc2.segments = shapeDesc.segments;
-                                data2.SetNumVertices((ushort)vertices1[0].Count);
-                                data2.SetHasVertices(true);
-                                data2.SetNumUVSets(4097);
-                                data2.SetHasNormals(true);
-                                data2.SetCenter(data.GetCenter());
-                                data2.SetRadius(data.GetRadius());
-                                data2.SetConsistencyFlags(data.GetConsistencyFlags());
-                                data2.SetNumTriangles((ushort)triangles1[0].Count);
-                                data2.SetNumTrianglePoints((uint)triangles1[0].Count * 3);
-                                data2.SetHasTriangles(true);
-                                data2.SetHasVertexColors(true);
-                                data2.SetVertices(vertices1[1]);
-                                data2.SetNormals(normals1[1]);
-                                data2.SetTangents(tangents1[1]);
-                                data2.SetBitangents(bitangents1[1]);
-                                data2.SetUVCoords(uvcoords1[1]);
-                                data2.SetVertexColors(vertexcolors1[1]);
-                                data2.SetTriangles(triangles1[1]);
-                                shapeDesc2.data = data2;
-                                list2.Add(shapeDesc2);
+                                shapedesc.textures[index] = altTexDesc.textures[index];
                             }
                         }
-                        else
+                    }
+                }
+                if (AtlasList.Contains(shapedesc.textures[0]))
+                {
+                    if (this.UVAtlas(shapedesc.geometry, shapedesc.textures[0], stat))
+                    {
+                        string[] strArray = new string[10] { "", "", "", "", "", "", "", "", "", "" };
+                        strArray[0] = AtlasList.Get(shapedesc.textures[0]).AtlasTexture;
+                        strArray[1] = AtlasList.Get(shapedesc.textures[0]).AtlasTextureN;
+                        if (shapedesc.textures[2] != "")
                         {
-                            list2.Add(shapeDesc);
+                            strArray[2] = AtlasList.Get(shapedesc.textures[2]).AtlasTexture;
+                        }
+                        if (Game.Mode == "fo4")
+                        {
+                            strArray[7] = AtlasList.Get(shapedesc.textures[0]).AtlasTextureS;
+                        }
+                        shapedesc.textures = strArray;
+                        shapedesc.TextureClampMode = 0U;
+                        shapedesc.isHighDetail = false;
+                    }
+                }
+                else
+                {
+                    if (useOptimizer && quadLevel != 4 && shapedesc.textures[0].ToLower(CultureInfo.InvariantCulture).Contains("mountainslab01"))
+                    {
+                        string[] strArray = new string[10] { "", "", "", "", "", "", "", "", "", "" };
+                        strArray[0] = "textures\\landscape\\mountains\\mountainslab02.dds";
+                        strArray[1] = "textures\\landscape\\mountains\\mountainslab02_n.dds";
+                        shapedesc.textures = strArray;
+                    }
+                    if (notHDTextureList.Any(shapedesc.textures[0].Contains))
+                    {
+                        if (this.verbose && shapedesc.textures[0].Contains("dyndolodtreelod"))
+                        {
+                            logFile.WriteLog("No atlas for " + shapedesc.textures[0] + " in " + stat.staticModels[this.quadIndex]);
                         }
                     }
                     else
                     {
-                        list2.Add(shapeDesc);
+                        if (!useHDFlag && stat.materialName != "")
+                        {
+                            shapedesc.isHighDetail = true;
+                        }
                     }
                 }
-                return list2;
-            }*/
-            return list;
+                if (notHDTextureList.Any(shapedesc.textures[0].Contains))
+                {
+                    shapedesc.isHighDetail = false;
+                }
+                if (HDTextureList.Any(shapedesc.textures[0].Contains) && stat.materialName != "")
+                {
+                    shapedesc.isHighDetail = true;
+                }
+                if (shapedesc.textures[0].Contains("dyndolod\\lod"))
+                {
+                    shapedesc.TextureClampMode = 0U;
+                    shapedesc.isHighDetail = false;
+                }
+            }
+            if (!shapedesc.isPassThru && (!this.generateVertexColors || (this.quadLevel != 4 && !shapedesc.isHighDetail)))
+            {
+                shapedesc.hasVertexColor = false;
+            }
+            quad.outValues.totalTriCount += shapedesc.geometry.GetNumTriangles();
+            quad.outValues.reducedTriCount += shapedesc.geometry.GetNumTriangles();
+            this.GenerateSegments(quad, ref shapedesc);
+            return shapedesc;
         }
 
         private ShapeDesc TransformShape(QuadDesc quad, StaticDesc stat, NiFile file, NiTriBasedGeom geom, Matrix44 parentTransform, float parentScale, int numGeom)
         {
             BBox bbox = new BBox(float.MaxValue, float.MinValue, float.MaxValue, float.MinValue, float.MaxValue, float.MinValue);
-            ShapeDesc shape1 = new ShapeDesc();
-            NiTriShape shape2;
-            NiTriShapeData data = new NiTriShapeData();
-            if (geom.GetClassName() == "NiTriStrips")
-            {
-                shape2 = new NiTriShape(geom);
-                data = new NiTriShapeData((NiTriStripsData)file.GetBlockAtIndex(geom.GetData()));
-            }
-            else if (geom.GetClassName() == "BSLODTriShape")
-            {
-                shape2 = new NiTriShape(geom);
-                data = (NiTriShapeData)file.GetBlockAtIndex(geom.GetData());
-            }
-            else
-            {
-                shape2 = new NiTriShape(geom);
-                data = (NiTriShapeData)file.GetBlockAtIndex(geom.GetData());
-            }
-            if (verbose && !data.HasVertexColors() && ((this.GetShaderFlags2(file, shape2) & 32) == 32))
+            ShapeDesc shapedesc = new ShapeDesc(this.gameDir, file, geom, stat, this.quadIndex, PassThruMeshList, skyblivionTexPath, useOptimizer, fixTangents, false, verbose, this.logFile);
+
+            if (verbose && !shapedesc.geometry.HasVertexColors() && shapedesc.hasVertexColor)
             {
                 if (!stat.staticModels[this.quadIndex].Contains("glacierrubbletrim0"))
                 {
                     logFile.WriteLog("Vertex Colors Flag, but no vertex colors in " + stat.staticModels[this.quadIndex]);
                 }
             }
-            if (((int)data.GetBSNumUVSets() & 1) == 0)
-                return shape1;
+            parentTransform *= stat.transrot;
+            parentScale *= stat.transscale;
+
             float _x = stat.x - (float)quad.x * 4096f;
             float _y = stat.y - (float)quad.y * 4096f;
             Matrix33 matrix33_1 = new Matrix33(true);
@@ -804,290 +519,235 @@ namespace LODGenerator
             matrix33_2.SetRotationY(Utils.ToRadians(-stat.rotY));
             matrix33_3.SetRotationZ(Utils.ToRadians(-stat.rotZ));
             Matrix44 matrix44 = new Matrix44(new Matrix33(true) * matrix33_1 * matrix33_2 * matrix33_3, new Vector3(_x, _y, stat.z), 1f);
-            List<Triangle> triangles = new List<Triangle>(data.GetTriangles());
-            List<Vector3> vertices = new List<Vector3>(data.GetVertices());
-            List<Vector3> normals = new List<Vector3>(data.GetNormals());
-            List<Vector3> tangents = new List<Vector3>();
-            List<Vector3> bitangents = new List<Vector3>();
-            if (geom.GetClassName() == "NiTriStrips")
-            {
-                List<int> extradatalist = geom.GetExtraData();
-                if (extradatalist.Count == 1)
-                {
-                    NiBinaryExtraData extradata = (NiBinaryExtraData)file.GetBlockAtIndex(extradatalist[0]);
-                    tangents = new List<Vector3>(extradata.GetTangents());
-                    bitangents = new List<Vector3>(extradata.GetBitangents());
-                }
-            }
-            else
-            {
-                tangents = new List<Vector3>(data.GetTangents());
-                bitangents = new List<Vector3>(data.GetBitangents());
-            }
-            // generate tangents independent of fix tangents setting
-            bool newtangents = false;
-            bool newbitangents = false;
-            //logFile.WriteLog("normals = " + data.HasNormals() + " = " + tangents.Count + " = " + bitangents.Count);
-            if (!data.HasNormals())
-            {
-                for (int index = 0; index < vertices.Count; ++index)
-                {
-                    normals.Add(new Vector3(0.0f, 0.0f, 0.0f));
-                }
-                data.SetHasNormals(true);
 
-                for (int index = 0; index < triangles.Count; ++index)
-                {
-                    Vector3 a = vertices[triangles[index][0]];
-                    Vector3 b = vertices[triangles[index][1]];
-                    Vector3 c = vertices[triangles[index][2]];
-                    Vector3 fn = Vector3.Cross(b - a, c - a);
-                    normals[triangles[index][0]] += fn;
-                    normals[triangles[index][1]] += fn;
-                    normals[triangles[index][2]] += fn;
-                }
-                for (int index = 0; index < normals.Count; ++index)
-                {
-                    normals[index].Normalize();
-                }
-            }
-            if (this.generateTangents && data.HasNormals())
-            {
-                if (tangents.Count == 0)
-                {
-                    newtangents = true;
-                    for (int index = 0; index < vertices.Count; ++index)
-                        tangents.Add(new Vector3(0.0f, 0.0f, 0.0f));
-                }
-                if (bitangents.Count == 0)
-                {
-                    newbitangents = true;
-                    for (int index = 0; index < vertices.Count; ++index)
-                        bitangents.Add(new Vector3(0.0f, 0.0f, 0.0f));
-                }
-            }
+            List<Triangle> triangles = new List<Triangle>(shapedesc.geometry.GetTriangles());
+            List<Vector3> vertices = new List<Vector3>(shapedesc.geometry.GetVertices());
+            List<Vector3> normals = new List<Vector3>(shapedesc.geometry.GetNormals());
+            List<Vector3> tangents = new List<Vector3>(shapedesc.geometry.GetTangents());
+            List<Vector3> bitangents = new List<Vector3>(shapedesc.geometry.GetBitangents());
+            List<UVCoord> uvcoords = new List<UVCoord>(shapedesc.geometry.GetUVCoords());
             for (int index = 0; index < vertices.Count; ++index)
             {
-                vertices[index] *= shape2.GetScale() * parentScale;
-                vertices[index] *= shape2.GetTransform() * parentTransform;
+                vertices[index] *= geom.GetScale() * parentScale;
+                vertices[index] *= geom.GetTransform() * parentTransform;
                 vertices[index] *= stat.scale;
                 vertices[index] *= matrix44;
-                if (data.HasNormals())
+                if (shapedesc.geometry.HasNormals())
                 {
-                    normals[index] *= parentTransform.RemoveTranslation() * shape2.GetTransform().RemoveTranslation();
+                    normals[index] *= parentTransform.RemoveTranslation() * geom.GetTransform().RemoveTranslation();
                     normals[index] *= matrix44.RemoveTranslation();
-                    // adjust tangents as well
-                    if (tangents.Count != 0)
+                    if (this.generateTangents)
                     {
-                        tangents[index] *= parentTransform.RemoveTranslation() * shape2.GetTransform().RemoveTranslation();
-                        tangents[index] *= matrix44.RemoveTranslation();
-                    }
-                    // adjust bitangents as well
-                    if (bitangents.Count != 0)
-                    {
-                        bitangents[index] *= parentTransform.RemoveTranslation() * shape2.GetTransform().RemoveTranslation();
-                        bitangents[index] *= matrix44.RemoveTranslation();
-                    }
-                    // fix tangents when they were newly generated
-                    if (newtangents || newbitangents || this.fixTangents)
-                    {
-                        Vector3 vector3_1 = Vector3.Cross(normals[index], new Vector3(0.0f, 0.0f, 1f));
-                        Vector3 vector3_2 = Vector3.Cross(normals[index], new Vector3(0.0f, 1f, 0.0f));
-                        if (newtangents)
+                        // adjust tangents as well
+                        if (tangents.Count != 0)
                         {
-                            tangents[index] = (double)vector3_1.Length > (double)vector3_2.Length ? vector3_1 : vector3_2;
-                            tangents[index].Normalize();
+                            tangents[index] *= parentTransform.RemoveTranslation() * geom.GetTransform().RemoveTranslation();
+                            tangents[index] *= matrix44.RemoveTranslation();
                         }
-                        if (newbitangents)
+                        // adjust bitangents as well
+                        if (bitangents.Count != 0)
                         {
-                            bitangents[index] = Vector3.Cross(normals[index], tangents[index]);
-                            bitangents[index].Normalize();
+                            bitangents[index] *= parentTransform.RemoveTranslation() * geom.GetTransform().RemoveTranslation();
+                            bitangents[index] *= matrix44.RemoveTranslation();
                         }
                     }
                 }
                 bbox.GrowByVertex(vertices[index]);
-                vertices[index] /= (float)this.quadLevel;
+                if (Game.Mode != "merge4" && Game.Mode != "merge5")
+                {
+                    vertices[index] /= (float)this.quadLevel;
+                }
             }
-            data.SetVertices(vertices);
-            if (data.HasNormals())
+
+            shapedesc.geometry.SetVertices(vertices);
+            if (shapedesc.geometry.HasNormals())
             {
-                data.SetNormals(normals);
-                data.SetHasTangents(false);
+                shapedesc.geometry.SetNormals(normals);
             }
-            data.SetCenter(new Vector3((float)(((double)bbox.px1 + (double)bbox.px2) / 2.0), (float)(((double)bbox.py1 + (double)bbox.py2) / 2.0), (float)(((double)bbox.pz1 + (double)bbox.pz2) / 2.0)) / (float)this.quadLevel);
-            data.SetRadius(this.CalcRadius(data));
-            data.SetConsistencyFlags((ushort)0);
-            data.SetKeepFlags((byte)51);
-            data.SetSkyrimMaterial(0U);
-            shape1.shape = shape2;
-            shape1.data = data;
+
             // relative x, y for segment
-            shape1.x = _x;
-            shape1.y = _y;
-            shape1.boundingBox = bbox;
-            shape1.textures = this.GetMeshTextures(file, shape2);
-            shape1.material = stat.materialName;
-            if (shape1.material.ToLower(CultureInfo.InvariantCulture).Contains("passthru"))
+            shapedesc.x = _x;
+            shapedesc.y = _y;
+            shapedesc.boundingBox = bbox;
+
+            if (shapedesc.material == "")
             {
-                shape1.isPassThru = true;
+                shapedesc.material = stat.materialName;
             }
-            else
-            {
-                shape1.isPassThru = false;
-            }
-            shape1.isHighDetail = false;
-            if (useHDFlag)
+            shapedesc.enableParent = stat.enableParent;
+            shapedesc.isHighDetail = false;
+            if (useHDFlag && stat.materialName != "")
             {
                 if ((stat.staticFlags & 131072) == 131072)
                 {
                     if (HDMeshList.Any(stat.staticModels[this.quadIndex].ToLower(CultureInfo.InvariantCulture).Contains))
                     {
-                        shape1.isHighDetail = true;
+                        shapedesc.isHighDetail = true;
                     }
                     else if (notHDMeshList.Any(stat.staticModels[this.quadIndex].ToLower(CultureInfo.InvariantCulture).Contains))
                     {
-                        shape1.isHighDetail = false;
+                        shapedesc.isHighDetail = false;
                     }
                     else
                     {
-                        shape1.isHighDetail = true;
+                        shapedesc.isHighDetail = true;
                     }
                 }
             }
-            // Shader Flags 2 SLSF2_Double_Sided
-            shape1.isDoubleSided = (this.GetShaderFlags2(file, shape2) & 16) == 16;
-            // clamp mode for atlas
-            shape1.TextureClampMode = this.GetTextureClampMode(file, shape2);
-            if (shape1.isPassThru)
-            {
-                shape1.shaderType = GetShaderType(file, shape2);
-                if (shape1.shaderType == "effectshader")
-                {
-                    BSEffectShaderProperty shader = this.GetEffectShader(file, shape2);
-                    shape1.shaderHash = Utils.GetHash(Utils.ObjectToByteArray(shader));
-                    //logFile.WriteLog(shape1.textures[0] + " = " + shape1.shaderHash);
-                    shape1.effectShader = shader;
-                }
-                else
-                {
-                    BSLightingShaderProperty shader = this.GetLightingShader(file, shape2);
-                    shape1.shaderHash = Utils.GetHash(Utils.ObjectToByteArray(shader));
-                    //logFile.WriteLog(shape1.textures[0] + " = " + shape1.shaderHash);
-                    shape1.lightingShader = shader;
-                }
-                shape1.hasVertexColor = data.HasVertexColors();
 
+            if (shapedesc.name != "")
+            {
+                string key = (stat.refID + "_" + numGeom + "_" + shapedesc.name).ToLower(CultureInfo.InvariantCulture);
+                if (AltTextureList.Contains(key))
+                {
+                    AltTextureDesc altTexDesc = new AltTextureDesc();
+                    altTexDesc = AltTextureList.Get(key);
+                    if ((shapedesc.textures[0].Contains("\\lod") && altTexDesc.textures[0].Contains("\\lod")) || ((!shapedesc.textures[0].Contains("\\lod") && !altTexDesc.textures[0].Contains("\\lod"))))
+                    {
+                        for (int index = 0; index < altTexDesc.textures.Count(); index++)
+                        {
+                            shapedesc.textures[index] = altTexDesc.textures[index];
+                        }
+                    }
+                }
+            }
+
+            if (AtlasList.Contains(shapedesc.textures[0]))
+            {
+                bool ok = false;
+                for (int index = 0; index < shapedesc.textures.Count(); index++)
+                {
+                    if (Game.Mode == "tes5" || Game.Mode == "fo4")
+                    {
+                        if (Game.Mode != "fo4" && (shapedesc.textures[index] == "" || shapedesc.textures[index] == shapedesc.textures[0] || shapedesc.textures[index] == shapedesc.textures[1]))
+                        {
+                            ok = true;
+                        }
+                        else if (Game.Mode == "fo4" && (shapedesc.textures[index] == "" || shapedesc.textures[index] == shapedesc.textures[0] || shapedesc.textures[index] == shapedesc.textures[1] || shapedesc.textures[index] == shapedesc.textures[7]))
+                        {
+                            ok = true;
+                        }
+                        else
+                        {
+                            ok = false;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        ok = true;
+                    }
+                }
+
+                if (ok && this.UVAtlas(shapedesc.geometry, shapedesc.textures[0], stat))
+                {
+                    string[] strArray = new string[10] { "", "", "", "", "", "", "", "", "", "" };
+                    for (int index = 0; index < shapedesc.textures.Count(); index++)
+                    {
+                        if (shapedesc.textures[index] == shapedesc.textures[0])
+                        {
+                            strArray[index] = AtlasList.Get(shapedesc.textures[0]).AtlasTexture;
+                        }
+                        if (shapedesc.textures[index] == shapedesc.textures[1])
+                        {
+                            strArray[index] = AtlasList.Get(shapedesc.textures[0]).AtlasTextureN;
+                        }
+                        if (Game.Mode == "fo4" && shapedesc.textures[index] == shapedesc.textures[7])
+                        {
+                            strArray[index] = AtlasList.Get(shapedesc.textures[0]).AtlasTextureS;
+                        }
+                    }
+                    shapedesc.textures = strArray;
+                    shapedesc.TextureClampMode = 0U;
+                    shapedesc.isHighDetail = false;
+                }
+            }
+
+            if (shapedesc.isPassThru)
+            {
+                shapedesc.hasVertexColor = shapedesc.geometry.HasVertexColors();
             }
             else
             {
-                if (shape1.shape.GetNameIndex() != -1)
+                if (useOptimizer && quadLevel != 4 && shapedesc.textures[0].ToLower(CultureInfo.InvariantCulture).Contains("mountainslab01"))
                 {
-                    string key = (stat.refID + "_" + numGeom + "_" + file.GetStringAtIndex(shape1.shape.GetNameIndex())).ToLower(CultureInfo.InvariantCulture);
-                    //Console.WriteLine(key);
-                    if (AltTextureList.Contains(key))
-                    {
-                        AltTextureDesc altTexDesc = new AltTextureDesc();
-                        altTexDesc = AltTextureList.Get(key);
-                        if ((shape1.textures[0].Contains("\\lod") && altTexDesc.textures[0].Contains("\\lod")) || ((!shape1.textures[0].Contains("\\lod") && !altTexDesc.textures[0].Contains("\\lod"))))
-                        {
-                            for (int index = 0; index < altTexDesc.textures.Count(); index++)
-                            {
-                                shape1.textures[index] = altTexDesc.textures[index];
-                            }
-                        }
-                    }
+                    string[] strArray = new string[10] { "", "", "", "", "", "", "", "", "", "" };
+                    strArray[0] = "textures\\landscape\\mountains\\mountainslab02.dds";
+                    strArray[1] = "textures\\landscape\\mountains\\mountainslab02_n.dds";
+                    shapedesc.textures = strArray;
                 }
-                if (AtlasList.Contains(shape1.textures[0]))
+                if (notHDTextureList.Any(shapedesc.textures[0].Contains))
                 {
-                    if (this.UVAtlas(data, shape1.textures[0], stat))
+                    if (this.verbose && shapedesc.textures[0].Contains("dyndolodtreelod"))
                     {
-                        string[] strArray = new string[9];
-                        strArray[0] = AtlasList.Get(shape1.textures[0]).AtlasTexture;
-                        strArray[1] = AtlasList.Get(shape1.textures[0]).AtlasTextureN;
-                        shape1.textures = strArray;
-                        shape1.TextureClampMode = 0U;
-                        shape1.isHighDetail = false;
+                        logFile.WriteLog("No atlas for " + shapedesc.textures[0] + " in " + stat.staticModels[this.quadIndex]);
                     }
                 }
                 else
                 {
-                    if (useOptimizer && quadLevel != 4 && shape1.textures[0].ToLower(CultureInfo.InvariantCulture).Contains("mountainslab01"))
+                    if (!useHDFlag && stat.materialName != "")
                     {
-                        string[] strArray = new string[9];
-                        strArray[0] = "textures\\landscape\\mountains\\mountainslab02.dds";
-                        strArray[1] = "textures\\landscape\\mountains\\mountainslab02_n.dds";
-                        shape1.textures = strArray;
-                    }
-                    if (notHDTextureList.Any(shape1.textures[0].Contains))
-                    {
-                        if (this.verbose)
-                        {
-                            logFile.WriteLog("No atlas for " + shape1.textures[0] + " in " + stat.staticModels[this.quadIndex]);
-                        }
-                    }
-                    else
-                    {
-                        if (!useHDFlag)
-                        {
-                            shape1.isHighDetail = true;
-                        }
+                        shapedesc.isHighDetail = true;
                     }
                 }
-                if (notHDTextureList.Any(shape1.textures[0].Contains))
+
+                if (notHDTextureList.Any(shapedesc.textures[0].Contains))
                 {
-                    shape1.isHighDetail = false;
+                    shapedesc.isHighDetail = false;
                 }
-                if (HDTextureList.Any(shape1.textures[0].Contains))
+                if (HDTextureList.Any(shapedesc.textures[0].Contains) && stat.materialName != "")
                 {
-                    shape1.isHighDetail = true;
+                    shapedesc.isHighDetail = true;
                 }
-                if (shape1.textures[0].Contains("dyndolod\\lod"))
+                if (shapedesc.textures[0].Contains("dyndolod\\lod"))
                 {
-                    shape1.TextureClampMode = 0U;
-                    shape1.isHighDetail = false;
+                    shapedesc.TextureClampMode = 0U;
+                    shapedesc.isHighDetail = false;
                 }
             }
-            if (!shape1.isPassThru && (!this.generateVertexColors || (this.quadLevel != 4 && !shape1.isHighDetail)))
+            if (this.generateTangents && (!useOptimizer || (useOptimizer && (this.quadLevel == 4 || shapedesc.isHighDetail || shapedesc.isPassThru))))
             {
-                data.SetHasVertexColors(false);
-                shape1.hasVertexColor = false;
+                shapedesc.geometry.SetTangents(tangents);
+                shapedesc.geometry.SetBitangents(bitangents);
             }
-            if (this.generateTangents)
+            else
             {
-                //shape1.material.Length != 0
-                if (!useOptimizer || (useOptimizer && (this.quadLevel == 4 || shape1.isHighDetail || shape1.isPassThru)))
+                if (Game.Mode != "merge4" && Game.Mode != "merge5" && Game.Mode != "convert4" && Game.Mode != "convert5")
                 {
-                    data.SetTangents(tangents);
-                    data.SetBitangents(bitangents);
+                    shapedesc.geometry.SetTangents(new List<Vector3>());
+                    shapedesc.geometry.SetBitangents(new List<Vector3>());
                 }
+            }
+            if (!shapedesc.isPassThru && (!this.generateVertexColors || (this.quadLevel != 4 && !shapedesc.isHighDetail)))
+            {
+                shapedesc.hasVertexColor = false;
             }
             if (this.removeUnseenFaces && quad.hasTerrainVertices)
             {
-                this.RemoveUnseenFaces(quad, data, shape1);
-                if ((int)data.GetNumTriangles() == 0)
+                this.RemoveUnseenFaces(quad, shapedesc);
+                if ((int)shapedesc.geometry.GetNumTriangles() == 0)
+                {
                     return (ShapeDesc)null;
+                }
             }
             else
             {
-                quad.outValues.totalTriCount += data.GetNumTriangles();
-                quad.outValues.reducedTriCount += data.GetNumTriangles();
+                quad.outValues.totalTriCount += shapedesc.geometry.GetNumTriangles();
+                quad.outValues.reducedTriCount += shapedesc.geometry.GetNumTriangles();
             }
-            this.GenerateSegments(quad, ref shape1);
-            //if (shape1.isPassThru)
-            //{
-            //    logFile.WriteLog(shape1.material + shape1.shaderType + shape1.shaderHash);
-            //}
-            return shape1;
+            this.GenerateSegments(quad, ref shapedesc);
+            return shapedesc;
         }
 
-        private bool UVAtlas(NiTriShapeData data, string texture, StaticDesc stat)
+        private bool UVAtlas(Geometry geometry, string texture, StaticDesc stat)
         {
-            List<UVCoord> uvcoords = data.GetUVCoords();
+            List<UVCoord> uvcoords = geometry.GetUVCoords();
             List<UVCoord> uvcoords2 = new List<UVCoord>();
             for (int index = 0; index < uvcoords.Count; ++index)
             {
                 float u = uvcoords[index][0];
                 float v = uvcoords[index][1];
+                //logFile.WriteLog("B " + u + ", " + v);
                 if (u < atlasToleranceMin || u > atlasToleranceMax || v < atlasToleranceMin || u > atlasToleranceMax)
                 {
                     if (this.verbose && !texture.Contains("glacierslablod"))
@@ -1096,10 +756,10 @@ namespace LODGenerator
                     }
                     return false;
                 }
-                u = Math.Max(u, 0);
-                v = Math.Max(v, 0);
-                u = Math.Min(u, 1);
-                v = Math.Min(v, 1);
+                u = Math.Max(u, AtlasList.Get(texture).minU);
+                v = Math.Max(v, AtlasList.Get(texture).minV);
+                u = Math.Min(u, AtlasList.Get(texture).maxU);
+                v = Math.Min(v, AtlasList.Get(texture).maxV);
                 u *= AtlasList.Get(texture).scaleU;
                 v *= AtlasList.Get(texture).scaleV;
                 u += AtlasList.Get(texture).posU;
@@ -1107,7 +767,7 @@ namespace LODGenerator
                 UVCoord coords = new UVCoord(u, v);
                 uvcoords2.Add(coords);
             }
-            data.SetUVCoords(uvcoords2);
+            geometry.SetUVCoords(uvcoords2);
             return true;
         }
 
@@ -1132,10 +792,10 @@ namespace LODGenerator
             return float.MinValue;
         }
 
-        private void RemoveUnseenFaces(QuadDesc quad, NiTriShapeData data, ShapeDesc shape)
+        private void RemoveUnseenFaces(QuadDesc quad, ShapeDesc shapedesc)
         {
-            List<Triangle> triangles = data.GetTriangles();
-            List<Vector3> vertices = data.GetVertices();
+            List<Triangle> triangles = shapedesc.geometry.GetTriangles();
+            List<Vector3> vertices = shapedesc.geometry.GetVertices();
             int count = triangles.Count;
             quad.outValues.totalTriCount += count;
             int loops = 0;
@@ -1147,7 +807,7 @@ namespace LODGenerator
             {
                 for (int index = 0; index < triangles.Count; ++index)
                 {
-                    QuadDesc quadCurrent = new QuadDesc();
+                    QuadDesc quadCurrent = new QuadDesc(true);
                     List<Triangle> trianglesCompare = new List<Triangle>();
                     List<Vector3> verticesCompare = new List<Vector3>();
                     bool[] vertexBelow = new bool[3];
@@ -1219,140 +879,146 @@ namespace LODGenerator
                     }
                 }
             }
-
-            // remove elements from other lists too
-            if (triangles.Count != 0 && triangles.Count != count)
+            shapedesc.geometry.SetTriangles(triangles);
+            if (useOptimizer)
             {
-                Dictionary<ushort, ushort> dictionary = new Dictionary<ushort, ushort>();
-                List<Vector3> vertices2 = new List<Vector3>();
-                List<UVCoord> uvcoords = data.GetUVCoords();
-                List<UVCoord> uvcoords2 = new List<UVCoord>();
-                List<Color4> vertexcolors = data.GetVertexColors();
-                List<Color4> vertexcolors2 = new List<Color4>();
-                List<Vector3> normals = data.GetNormals();
-                List<Vector3> normals2 = new List<Vector3>();
-                List<Vector3> tangents = data.GetTangents();
-                List<Vector3> tangents2 = new List<Vector3>();
-                List<Vector3> bitangents = data.GetBitangents();
-                List<Vector3> bitangents2 = new List<Vector3>();
-                ushort index2 = 0;
-                bool vertexcolors_allwhite = true;
-                if (shape.isPassThru)
+                shapedesc.geometry.RemoveDuplicate(true);
+            }
+            else
+            {
+                shapedesc.geometry.RemoveUnused();
+            }
+            quad.outValues.reducedTriCount += triangles.Count;
+        }
+
+        private List<ShapeDesc> ParseNif(QuadDesc quad, StaticDesc curStat, int level)
+        {
+            NiFile file1 = new NiFile();
+            if (curStat.staticModels[level].Contains(".nif"))
+            {
+                try
                 {
-                    vertexcolors_allwhite = false;
+                    file1.Read(this.gameDir, curStat.staticModels[level], this.logFile);
                 }
-                for (int index = 0; index < triangles.Count; ++index)
+                catch
                 {
-                    for (int index3 = 0; index3 < 3; ++index3)
+                    //Console.WriteLine("ignoring nif");
+                }
+                return this.IterateNodes(quad, curStat, level, file1, (NiNode)file1.GetBlockAtIndex(0), new Matrix44(true), 1f);
+            }
+            if (curStat.staticModels[level].Contains(".dds"))
+            {
+                if (FlatList.Contains(curStat.staticModels[level]))
+                {
+                    //this.logFile.WriteLog(curStat.staticModels[level] + " = " + FlatList.Get(curStat.staticModels[level]).width + ", " + FlatList.Get(curStat.staticModels[level]).height);
+                    BSFadeNode rootFadeNode = new BSFadeNode();
+                    rootFadeNode.SetNameIndex(file1.AddString("LODGenPassThru"));
+
+                    NiTriShape nitrishape = new NiTriShape();
+                    nitrishape.SetNameIndex(file1.AddString("LODGenPassThru"));
+                    nitrishape.SetFlags(14);
+                    nitrishape.SetFlags2(8);
+                    nitrishape.SetScale(FlatList.Get(curStat.staticModels[level]).scale);
+
+                    NiTriShapeData data = new NiTriShapeData();
+                    List<Vector3> vertices = new List<Vector3>();
+                    vertices.Add(new Vector3(-FlatList.Get(curStat.staticModels[level]).width / 2, 0, FlatList.Get(curStat.staticModels[level]).shiftZ));
+                    vertices.Add(new Vector3(+FlatList.Get(curStat.staticModels[level]).width / 2, 0, FlatList.Get(curStat.staticModels[level]).shiftZ));
+                    vertices.Add(new Vector3(+FlatList.Get(curStat.staticModels[level]).width / 2, 0, FlatList.Get(curStat.staticModels[level]).height + FlatList.Get(curStat.staticModels[level]).shiftZ));
+                    vertices.Add(new Vector3(-FlatList.Get(curStat.staticModels[level]).width / 2, 0, FlatList.Get(curStat.staticModels[level]).height + FlatList.Get(curStat.staticModels[level]).shiftZ));
+                    vertices.Add(new Vector3(0, -FlatList.Get(curStat.staticModels[level]).width / 2, FlatList.Get(curStat.staticModels[level]).shiftZ));
+                    vertices.Add(new Vector3(0, +FlatList.Get(curStat.staticModels[level]).width / 2, FlatList.Get(curStat.staticModels[level]).shiftZ));
+                    vertices.Add(new Vector3(0, +FlatList.Get(curStat.staticModels[level]).width / 2, FlatList.Get(curStat.staticModels[level]).height + FlatList.Get(curStat.staticModels[level]).shiftZ));
+                    vertices.Add(new Vector3(0, -FlatList.Get(curStat.staticModels[level]).width / 2, FlatList.Get(curStat.staticModels[level]).height + FlatList.Get(curStat.staticModels[level]).shiftZ));
+
+                    List<UVCoord> uv = new List<UVCoord>();
+                    uv.Add(new UVCoord(0.0f, 1.0f));
+                    uv.Add(new UVCoord(1.0f, 1.0f));
+                    uv.Add(new UVCoord(1.0f, 0.0f));
+                    uv.Add(new UVCoord(0.0f, 0.0f));
+                    uv.Add(new UVCoord(0.0f, 1.0f));
+                    uv.Add(new UVCoord(1.0f, 1.0f));
+                    uv.Add(new UVCoord(1.0f, 0.0f));
+                    uv.Add(new UVCoord(0.0f, 0.0f));
+                    List<Triangle> triangles = new List<Triangle>();
+                    triangles.Add(new Triangle(0, 1, 2));
+                    triangles.Add(new Triangle(2, 3, 0));
+                    triangles.Add(new Triangle(4, 5, 6));
+                    triangles.Add(new Triangle(6, 7, 4));
+                    data.SetNumVertices(8);
+                    data.SetHasVertices(true);
+                    data.SetVertices(vertices);
+                    data.SetNumUVSets(1);
+                    data.SetHasTangents(true);
+                    data.SetHasNormals(true);
+                    data.SetNormals(FlatList.Get(curStat.staticModels[level]).normals);
+                    data.SetTangents(FlatList.Get(curStat.staticModels[level]).tangents);
+                    data.SetBitangents(FlatList.Get(curStat.staticModels[level]).bitangents);
+                    data.SetCenter(new Vector3(0.0f, 0.0f, (FlatList.Get(curStat.staticModels[level]).height + FlatList.Get(curStat.staticModels[level]).shiftZ) / 2));
+                    data.SetRadius(FlatList.Get(curStat.staticModels[level]).width);
+                    data.SetHasVertexColors(false);
+                    data.SetUVCoords(uv);
+                    data.SetNumTriangles(4);
+                    data.SetNumTrianglePoints(12);
+                    data.SetHasTriangles(true);
+                    data.SetTriangles(triangles);
+
+                    BSLightingShaderProperty lightingShaderProperty = new BSLightingShaderProperty();
+                    lightingShaderProperty.SetShaderFlags1(2147483648);
+                    lightingShaderProperty.SetShaderFlags2(33554449);
+                    //lightingShaderProperty.SetShaderFlags2(570458129);
+                    //lightingShaderProperty.SetShaderFlags2(536903697);
+                    lightingShaderProperty.SetTextureClampMode(0);
+                    lightingShaderProperty.SetLightingEffect1(FlatList.Get(curStat.staticModels[level]).effect1);
+                    // no visual change
+                    lightingShaderProperty.SetLightingEffect2(2.0f);
+
+                    BSShaderTextureSet shaderTextureSet = new BSShaderTextureSet();
+                    shaderTextureSet.SetNumTextures(10);
+                    shaderTextureSet.SetTexture(0, curStat.staticModels[level]);
+                    shaderTextureSet.SetTexture(1, Utils.GetDiffuseTextureName(curStat.staticModels[level]));
+                    shaderTextureSet.SetTexture(2, curStat.staticModels[level]);
+                    shaderTextureSet.SetTexture(3, "");
+                    shaderTextureSet.SetTexture(4, "");
+                    shaderTextureSet.SetTexture(5, "");
+                    shaderTextureSet.SetTexture(6, "");
+                    if (Game.Mode == "fo4")
                     {
-                        ushort v1 = triangles[index][index3];
-                        if (!dictionary.ContainsKey(v1))
-                        {
-                            dictionary.Add(v1, index2);
-                            ++index2;
-                            if (vertices.Count != 0)
-                            {
-                                vertices2.Add(vertices[v1]);
-                            }
-                            if (uvcoords.Count != 0)
-                            {
-                                uvcoords2.Add(uvcoords[v1]);
-                            }
-                            if (vertexcolors.Count != 0)
-                            {
-                                float r = vertexcolors[v1][0];
-                                float g = vertexcolors[v1][1];
-                                float b = vertexcolors[v1][2];
-                                float a = vertexcolors[v1][3];
-                                if (r != 1f || b != 1f || g != 1f)
-                                {
-                                    vertexcolors_allwhite = false;
-                                }
-                                if (shape.isPassThru)
-                                {
-                                    // if neither LOD flag is set alpha is used on/off at 0.5f, nobody wants that
-                                    vertexcolors2.Add(new Color4(r, g, b, 1f));
-                                }
-                                else
-                                {
-                                    // HD snow shader uses alpha
-                                    vertexcolors2.Add(new Color4(r, g, b, a));
-                                }
-                            }
-                            if (normals.Count != 0)
-                            {
-                                normals2.Add(normals[v1]);
-                            }
-                            if (tangents.Count != 0)
-                            {
-                                tangents2.Add(tangents[v1]);
-                            }
-                            if (bitangents.Count != 0)
-                            {
-                                bitangents2.Add(bitangents[v1]);
-                            }
-                        }
-                    }
-                }
-                // update indexes of triangles
-                for (int index = 0; index < triangles.Count; ++index)
-                {
-                    for (int index3 = 0; index3 < 3; ++index3)
-                    {
-                        ushort key = triangles[index][index3];
-                        if (!dictionary.ContainsKey(key))
-                        {
-                            this.logFile.WriteLog("no index for " + key);
-                        }
-                        ushort v1 = dictionary[key];
-                        Triangle triangle;
-                        (triangle = triangles[index])[index3] = (v1);
-                    }
-                }
-                if (vertices2.Count != 0)
-                {
-                    data.SetVertices(vertices2);
-                }
-                if (uvcoords2.Count != 0)
-                {
-                    data.SetUVCoords(uvcoords2);
-                }
-                if (vertexcolors2.Count != 0)
-                {
-                    if (vertexcolors_allwhite)
-                    {
-                        data.SetHasVertexColors(false);
-                        shape.hasVertexColor = false;
+                        shaderTextureSet.SetTexture(7, Utils.GetSpecularTextureName(curStat.staticModels[level]));
                     }
                     else
                     {
-                        data.SetHasVertexColors(true);
-                        shape.hasVertexColor = true;
-                        data.SetVertexColors(vertexcolors2);
+                        shaderTextureSet.SetTexture(7, "");
                     }
-                }
-                if (normals2.Count != 0)
-                {
-                    data.SetNormals(normals2);
-                }
-                if (tangents2.Count != 0)
-                {
-                    data.SetTangents(tangents2);
-                }
-                if (bitangents2.Count != 0)
-                {
-                    data.SetBitangents(bitangents2);
+                    shaderTextureSet.SetTexture(8, "");
+                    shaderTextureSet.SetTexture(9, "");
+
+                    file1.AddBlock((NiObject)rootFadeNode);
+                    rootFadeNode.AddChild(file1.AddBlock((NiObject)nitrishape));
+                    nitrishape.SetData(file1.AddBlock((NiObject)data));
+                    nitrishape.SetBSProperty(0, file1.AddBlock((NiObject)lightingShaderProperty));
+                    lightingShaderProperty.SetTextureSet(file1.AddBlock((NiObject)shaderTextureSet));
+
+                    if (AtlasList.Contains(curStat.staticModels[level]))
+                    {
+                        Geometry geom = new Geometry(data);
+                        if (this.UVAtlas(geom, curStat.staticModels[level], new StaticDesc()))
+                        {
+                            data.SetUVCoords(geom.GetUVCoords());
+                            string[] strArray = new string[10] { "", "", "", "", "", "", "", "", "", "" };
+                            shaderTextureSet.SetTexture(0, AtlasList.Get(curStat.staticModels[level]).AtlasTexture);
+                            shaderTextureSet.SetTexture(1, AtlasList.Get(curStat.staticModels[level]).AtlasTextureN);
+                            shaderTextureSet.SetTexture(2, AtlasList.Get(curStat.staticModels[level]).AtlasTexture);
+                        }
+                    }
+
+                    //file1.Write(this.outputDir + (object)"\\" + this.worldspaceName + ".Level4.X" + quad.x.ToString() + ".Y" + quad.y.ToString() + curStat.staticModels[level].Replace("\\","") + ".nif", logFile);
+                    Matrix44 transform = new Matrix44(true);
+                    transform.SetRotationZ((GetRandomNumber() * 90) - 45);
+                    return this.IterateNodes(quad, curStat, level, file1, (NiNode)file1.GetBlockAtIndex(0), transform, 1f);
                 }
             }
-            quad.outValues.reducedTriCount += triangles.Count;
-            data.SetTriangles(triangles);
-        }
-
-        private List<ShapeDesc> ParseNif(QuadDesc quad, StaticDesc curStat, int level, NiFile file, NiNode rootNode)
-        {
-            NiFile file1 = new NiFile();
-            file1.Read(this.gameDir, curStat.staticModels[level], this.logFile);
-            return this.IterateNodes(quad, curStat, level, file1, (NiNode)file1.GetBlockAtIndex(0), new Matrix44(true), 1f);
+            return new List<ShapeDesc>();
         }
 
         private void CreateLODNodes(NiFile file, NiNode rootNode, QuadDesc quad, List<ShapeDesc> shapes)
@@ -1361,7 +1027,8 @@ namespace LODGenerator
             {
                 BSMultiBoundNode node = new BSMultiBoundNode();
                 rootNode.AddChild(file.AddBlock((NiObject)node));
-                BSSegmentedTriShape segmentedTriShape = new BSSegmentedTriShape((NiGeometry)shapeDesc.shape);
+                BSSegmentedTriShape segmentedTriShape = new BSSegmentedTriShape();
+
                 node.AddChild(file.AddBlock((NiObject)segmentedTriShape));
                 node.SetCullMode(1U);
                 string str = "obj";
@@ -1370,24 +1037,44 @@ namespace LODGenerator
                 {
                     str = str + shapeDesc.material;
                 }
-                // only level 4 should have HD
-                if (shapeDesc.isHighDetail && (this.quadLevel == 4 || this.useHDFlag))
+                // only level 4 should have HD - there seems to be no visual difference if no shader is used
+                if (shapeDesc.isHighDetail && shapeDesc.material != "" && (this.quadLevel == 4 || this.useHDFlag))
                 {
                     str = str + "HD";
                 }
-                //if (shapeDesc.shaderHash != "")
-                //{
-                //    str = str + shapeDesc.shaderHash;
-                //}
-                //logFile.WriteLog(shapeDesc.material + shapeDesc.shaderType + shapeDesc.shaderHash);
                 segmentedTriShape.SetNameIndex(file.AddString(str));
                 segmentedTriShape.SetFlags((ushort)14);
                 segmentedTriShape.SetFlags2((ushort)8320);
-                segmentedTriShape.SetData(file.AddBlock((NiObject)shapeDesc.data));
+                int dataBlock = -1;
+                if (!dontGroup && shapeDesc.isGroup)
+                {
+                    if (quad.dataBlockIndex.ContainsKey(shapeDesc.shapeHash))
+                    {
+                        dataBlock = quad.dataBlockIndex[shapeDesc.shapeHash];
+                    }
+                    else
+                    {
+                        dataBlock = (file.AddBlock((NiObject)shapeDesc.geometry.ToNiTriShapeData(generateVertexColors)));
+                        quad.dataBlockIndex.Add(shapeDesc.shapeHash, dataBlock);
+                    }
+                }
+                else
+                {
+                    dataBlock = (file.AddBlock((NiObject)shapeDesc.geometry.ToNiTriShapeData(generateVertexColors)));
+                }
+                segmentedTriShape.SetData(dataBlock);
                 segmentedTriShape.SetBSProperty(1, -1);
                 segmentedTriShape.SetScale((float)this.quadLevel);
-                segmentedTriShape.SetRotation(new Matrix33(true));
-                segmentedTriShape.SetTranslation(new Vector3((float)quad.x * 4096f, (float)quad.y * 4096f, 0.0f));
+                if (!dontGroup && shapeDesc.isGroup)
+                {
+                    segmentedTriShape.SetRotation(shapeDesc.rotation);
+                    segmentedTriShape.SetTranslation(shapeDesc.translation);
+                }
+                else
+                {
+                    segmentedTriShape.SetRotation(new Matrix33(true));
+                    segmentedTriShape.SetTranslation(new Vector3((float)quad.x * 4096f, (float)quad.y * 4096f, 0.0f));
+                }
                 for (int index = 0; index < 16; ++index)
                 {
                     segmentedTriShape.AddSegment(new BSSegment(0U, (ushort)0));
@@ -1405,39 +1092,94 @@ namespace LODGenerator
                 }
                 if (shapeDesc.isPassThru)
                 {
-                    if (shapeDesc.shaderType == "effectshader")
+                    if (shapeDesc.shaderType == "bseffectshaderproperty")
                     {
-                        //logFile.WriteLog("effectshader here " + shapeDesc.hasVertexColor);
                         BSEffectShaderProperty effectShaderProperty = new BSEffectShaderProperty();
                         effectShaderProperty = shapeDesc.effectShader;
+                        effectShaderProperty.SetTextureClampMode(shapeDesc.TextureClampMode);
+                        effectShaderProperty.SetSourceTexture(shapeDesc.textures[0]);
                         segmentedTriShape.SetBSProperty(0, file.AddBlock((NiObject)effectShaderProperty));
+                    }
+                    else if (shapeDesc.shaderType == "bslightingshaderproperty")
+                    {
+                        BSLightingShaderProperty lightingShaderProperty = new BSLightingShaderProperty();
+                        int shaderBlock = -1;
+                        // no batching of shaders :(
+                        //if (quad.shaderBlockIndex.ContainsKey(shapeDesc.shaderHash))
+                        //{
+                        //    shaderBlock = quad.shaderBlockIndex[shapeDesc.shaderHash];
+                        //}
+                        //else
+                        {
+                            lightingShaderProperty = shapeDesc.lightingShader;
+
+                            if (lightingShaderProperty.GetShaderType() != 0 && lightingShaderProperty.GetShaderType() != 2)
+                            {
+                                logFile.WriteLog("Shader Type " + lightingShaderProperty.GetShaderType() + " = " + shapeDesc.name + " = " + shapeDesc.staticName + ", Cell " + quad.ToString());
+                            }
+
+                            lightingShaderProperty.SetTextureClampMode(shapeDesc.TextureClampMode);
+                            shaderBlock = file.AddBlock((NiObject)lightingShaderProperty);
+                            //quad.shaderBlockIndex.Add(shapeDesc.shaderHash, shaderBlock);
+                            int textureBlock = -1;
+                            BSShaderTextureSet shaderTextureSet = new BSShaderTextureSet();
+                            shaderTextureSet.SetNumTextures(9);
+                            shaderTextureSet.SetTexture(0, shapeDesc.textures[0]);
+                            shaderTextureSet.SetTexture(1, shapeDesc.textures[1]);
+                            shaderTextureSet.SetTexture(2, shapeDesc.textures[2]);
+                            shaderTextureSet.SetTexture(3, shapeDesc.textures[3]);
+                            shaderTextureSet.SetTexture(4, shapeDesc.textures[4]);
+                            shaderTextureSet.SetTexture(5, shapeDesc.textures[5]);
+                            shaderTextureSet.SetTexture(6, shapeDesc.textures[6]);
+                            shaderTextureSet.SetTexture(7, shapeDesc.textures[7]);
+                            shaderTextureSet.SetTexture(8, shapeDesc.textures[8]);
+                            if (quad.textureBlockIndexPassThru.ContainsKey(Utils.GetHash(Utils.ObjectToByteArray(shaderTextureSet))))
+                            {
+                                textureBlock = quad.textureBlockIndexPassThru[Utils.GetHash(Utils.ObjectToByteArray(shaderTextureSet))];
+                            }
+                            else
+                            {
+                                textureBlock = file.AddBlock(shaderTextureSet);
+                                quad.textureBlockIndexPassThru.Add(Utils.GetHash(Utils.ObjectToByteArray(shaderTextureSet)), textureBlock);
+                            }
+                            lightingShaderProperty.SetTextureSet(textureBlock);
+                        }
+                        segmentedTriShape.SetBSProperty(0, shaderBlock);
                     }
                     else
                     {
-                        //logFile.WriteLog("lightingshader here " + shapeDesc.hasVertexColor);
-                        BSLightingShaderProperty lightingShaderProperty = new BSLightingShaderProperty();
-                        lightingShaderProperty = shapeDesc.lightingShader;
-                        segmentedTriShape.SetBSProperty(0, file.AddBlock((NiObject)lightingShaderProperty));
-                        BSShaderTextureSet shaderTextureSet = new BSShaderTextureSet();
-                        lightingShaderProperty.SetTextureSet(file.AddBlock((NiObject)shaderTextureSet));
-                        shaderTextureSet.SetNumTextures(9);
-                        shaderTextureSet.SetTexture(0, shapeDesc.textures[0]);
-                        shaderTextureSet.SetTexture(1, shapeDesc.textures[1]);
-                        shaderTextureSet.SetTexture(2, shapeDesc.textures[2]);
-                        shaderTextureSet.SetTexture(3, shapeDesc.textures[3]);
-                        shaderTextureSet.SetTexture(4, shapeDesc.textures[4]);
-                        shaderTextureSet.SetTexture(5, shapeDesc.textures[5]);
-                        shaderTextureSet.SetTexture(6, shapeDesc.textures[6]);
-                        shaderTextureSet.SetTexture(7, shapeDesc.textures[7]);
-                        shaderTextureSet.SetTexture(8, shapeDesc.textures[8]);
+                        if (verbose)
+                        {
+                            logFile.WriteLog(shapeDesc.staticModel + " " + shapeDesc.name + "unknown shader " + shapeDesc.shaderType);
+                        }
                     }
                 }
                 else
                 {
-                    BSShaderTextureSet shaderTextureSet = new BSShaderTextureSet();
                     BSLightingShaderProperty lightingShaderProperty = new BSLightingShaderProperty();
                     segmentedTriShape.SetBSProperty(0, file.AddBlock((NiObject)lightingShaderProperty));
-                    lightingShaderProperty.SetTextureSet(file.AddBlock((NiObject)shaderTextureSet));
+                    int textureBlock = -1;
+                    BSShaderTextureSet shaderTextureSet = new BSShaderTextureSet();
+                    shaderTextureSet.SetNumTextures(9);
+                    shaderTextureSet.SetTexture(0, shapeDesc.textures[0]);
+                    shaderTextureSet.SetTexture(1, shapeDesc.textures[1]);
+                    shaderTextureSet.SetTexture(2, shapeDesc.textures[2]);
+                    shaderTextureSet.SetTexture(3, shapeDesc.textures[3]);
+                    shaderTextureSet.SetTexture(4, shapeDesc.textures[4]);
+                    shaderTextureSet.SetTexture(5, shapeDesc.textures[5]);
+                    shaderTextureSet.SetTexture(6, shapeDesc.textures[6]);
+                    shaderTextureSet.SetTexture(7, shapeDesc.textures[7]);
+                    shaderTextureSet.SetTexture(8, shapeDesc.textures[8]);
+                    if (quad.textureBlockIndex.ContainsKey(Utils.GetHash(Utils.ObjectToByteArray(shaderTextureSet))))
+                    {
+                        textureBlock = quad.textureBlockIndex[Utils.GetHash(Utils.ObjectToByteArray(shaderTextureSet))];
+                    }
+                    else
+                    {
+                        textureBlock = file.AddBlock((NiObject)shaderTextureSet);
+                        quad.textureBlockIndex.Add(Utils.GetHash(Utils.ObjectToByteArray(shaderTextureSet)), textureBlock);
+                    }
+                    lightingShaderProperty.SetTextureSet(textureBlock);
                     lightingShaderProperty.SetLightingEffect1(0.0f);
                     lightingShaderProperty.SetLightingEffect2(0.0f);
                     lightingShaderProperty.SetGlossiness(1f);
@@ -1446,19 +1188,16 @@ namespace LODGenerator
                     uint num1 = 2147483648U;
                     // SLSF2_ZBuffer_Write
                     uint num3 = 1U;
-                    if (shapeDesc.data.HasVertexColors())
+                    if (shapeDesc.hasVertexColor)
                     {
                         // SLSF2_Vertex_Colors
                         num3 |= 32U;
                     }
-                    if (shapeDesc.isDoubleSided)
+                    if (shapeDesc.isDoubleSided || (this.alphaDoublesided && shapeDesc.isAlpha))
                     {
                         // SLSF2_Double_Sided
                         num3 |= 16U;
                     }
-                    shaderTextureSet.SetNumTextures(9);
-                    shaderTextureSet.SetTexture(0, shapeDesc.textures[0]);
-                    shaderTextureSet.SetTexture(1, shapeDesc.textures[1]);
                     if (shapeDesc.isHighDetail && (this.quadLevel == 4 || this.useHDFlag))
                     {
                         // SLSF2_HD_LOD_Objects
@@ -1476,11 +1215,261 @@ namespace LODGenerator
             }
         }
 
-        private void CreateLODNodesFNV(NiFile file, BSMultiBoundNode node, QuadDesc quad, List<ShapeDesc> shapes)
+        // oblivion format
+        private void CreateMerge4Nodes(NiFile file, NiNode rootNode, QuadDesc quad, List<ShapeDesc> shapes)
         {
             foreach (ShapeDesc shapeDesc in shapes)
             {
-                BSSegmentedTriShape segmentedTriShape = new BSSegmentedTriShape((NiGeometry)shapeDesc.shape);
+                if (shapeDesc.geometry.GetVertices() == null || shapeDesc.geometry.GetNumVertices() == 0 || shapeDesc.shaderType != "nitexturingproperty")
+                {
+                    continue;
+                }
+                NiTriShape triShape = new NiTriShape();
+                rootNode.AddChild(file.AddBlock(triShape));
+                triShape.SetNameIndex(file.AddString(shapeDesc.name));
+                triShape.SetFlags(0);
+                triShape.SetData(file.AddBlock((NiObject)shapeDesc.geometry.ToNiTriShapeData(generateVertexColors)));
+                /*if (shapeDesc.isAlpha)
+                {
+                    NiAlphaProperty alphaProperty = new NiAlphaProperty();
+                    alphaProperty.SetFlags(4844);
+                    alphaProperty.SetThreshold(shapeDesc.alphaThreshold);
+                    triShape.SetBSProperty(1, file.AddBlock(alphaProperty));
+                }
+                else
+                {
+                    triShape.SetBSProperty(1, -1);
+                }*/
+                if (shapeDesc.shaderType == "nitexturingproperty")
+                {
+                    if (shapeDesc.materialProperty != null)
+                    {
+                        int materialBlock = -1;
+                        if (quad.dataBlockIndex.ContainsKey(Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.materialProperty))))
+                        {
+                            materialBlock = quad.dataBlockIndex[Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.materialProperty))];
+                        }
+                        else
+                        {
+                            materialBlock = file.AddBlock(shapeDesc.materialProperty);
+                            triShape.SetProperties(materialBlock);
+                            quad.dataBlockIndex.Add(Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.materialProperty)), materialBlock);
+                        }
+                        triShape.SetProperties(materialBlock);
+                    }
+                    NiTexturingProperty texturingProperty = new NiTexturingProperty();
+                    texturingProperty = shapeDesc.texturingProperty;
+                    //texturingProperty.SetHasBaseTexture(false);
+                    if (texturingProperty.HasBaseTexture())
+                    {
+                        if (shapeDesc.texturingProperty.GetBaseTexture().source != -1)
+                        {
+                            TexDesc texDesc = texturingProperty.GetBaseTexture();
+                            shapeDesc.sourceTextureBase.SetFileName(shapeDesc.textures[0]);
+                            if (!quad.textureBlockIndex.ContainsKey(Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureBase))))
+                            {
+                                texDesc.source = file.AddBlock(shapeDesc.sourceTextureBase);
+                                quad.textureBlockIndex.Add(Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureBase)), texDesc.source);
+                            }
+                            else
+                            {
+                                texDesc.source = quad.textureBlockIndex[Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureBase))];
+                            }
+                            texturingProperty.SetBaseTexture(texDesc);
+                        }
+                    }
+                    if (texturingProperty.HasDetailTexture())
+                    {
+                        if (shapeDesc.texturingProperty.GetDetailTexture().source != -1)
+                        {
+                            TexDesc texDesc = texturingProperty.GetDetailTexture();
+                            shapeDesc.sourceTextureDetail.SetFileName(shapeDesc.textures[0]);
+                            if (!quad.textureBlockIndex.ContainsKey(Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureDetail))))
+                            {
+                                texDesc.source = file.AddBlock(shapeDesc.sourceTextureDetail);
+                                quad.textureBlockIndex.Add(Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureDetail)), texDesc.source);
+                            }
+                            else
+                            {
+                                texDesc.source = quad.textureBlockIndex[Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureDetail))];
+                            }
+                            texturingProperty.SetDetailTexture(texDesc);
+                        }
+                    }
+                    if (texturingProperty.HasGlowTexture())
+                    {
+                        if (shapeDesc.texturingProperty.GetGlowTexture().source != -1)
+                        {
+                            TexDesc texDesc = texturingProperty.GetGlowTexture();
+                            shapeDesc.sourceTextureGlow.SetFileName(shapeDesc.textures[0]);
+                            if (!quad.textureBlockIndex.ContainsKey(Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureGlow))))
+                            {
+                                texDesc.source = file.AddBlock(shapeDesc.sourceTextureGlow);
+                                quad.textureBlockIndex.Add(Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureGlow)), texDesc.source);
+                            }
+                            else
+                            {
+                                texDesc.source = quad.textureBlockIndex[Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureGlow))];
+                            }
+                            texturingProperty.SetGlowTexture(texDesc);
+                        }
+                    }
+                    if (texturingProperty.HasBumpMapTexture())
+                    {
+                        if (shapeDesc.texturingProperty.GetBumpMapTexture().source != -1)
+                        {
+                            TexDesc texDesc = texturingProperty.GetBumpMapTexture();
+                            shapeDesc.sourceTextureBump.SetFileName(shapeDesc.textures[0]);
+                            if (!quad.textureBlockIndex.ContainsKey(Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureBump))))
+                            {
+                                texDesc.source = file.AddBlock(shapeDesc.sourceTextureBump);
+                                quad.textureBlockIndex.Add(Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureBump)), texDesc.source);
+                            }
+                            else
+                            {
+                                texDesc.source = quad.textureBlockIndex[Utils.GetHash(Utils.ObjectToByteArray(shapeDesc.sourceTextureBump))];
+                            }
+                            texturingProperty.SetBumpMapTexture(texDesc);
+                        }
+                    }
+                    triShape.SetProperties(file.AddBlock(shapeDesc.texturingProperty));
+                }
+                /*else if (shapeDesc.shaderType == "bseffectshaderproperty")
+                {
+                    BSEffectShaderProperty effectShaderProperty = new BSEffectShaderProperty();
+                    effectShaderProperty = shapeDesc.effectShader;
+                    effectShaderProperty.SetSourceTexture(shapeDesc.textures[0]);
+                    triShape.SetBSProperty(0, file.AddBlock((NiObject)effectShaderProperty));
+                }
+                else if (shapeDesc.shaderType == "bslightingshaderproperty")
+                {
+                    BSLightingShaderProperty lightingShaderProperty = new BSLightingShaderProperty();
+                    lightingShaderProperty = shapeDesc.lightingShader;
+                    triShape.SetBSProperty(0, file.AddBlock((NiObject)lightingShaderProperty));
+                    BSShaderTextureSet shaderTextureSet = new BSShaderTextureSet();
+                    lightingShaderProperty.SetTextureSet(file.AddBlock((NiObject)shaderTextureSet));
+                    shaderTextureSet.SetNumTextures(9);
+                    shaderTextureSet.SetTexture(0, shapeDesc.textures[0]);
+                    shaderTextureSet.SetTexture(1, shapeDesc.textures[1]);
+                    shaderTextureSet.SetTexture(2, shapeDesc.textures[2]);
+                    shaderTextureSet.SetTexture(3, shapeDesc.textures[3]);
+                    shaderTextureSet.SetTexture(4, shapeDesc.textures[4]);
+                    shaderTextureSet.SetTexture(5, shapeDesc.textures[5]);
+                    shaderTextureSet.SetTexture(6, shapeDesc.textures[6]);
+                    shaderTextureSet.SetTexture(7, shapeDesc.textures[7]);
+                    shaderTextureSet.SetTexture(8, shapeDesc.textures[8]);
+                }*/
+                else
+                {
+                    if (verbose)
+                    {
+                        logFile.WriteLog(shapeDesc.staticModel + " " + shapeDesc.name + "unknown shader " + shapeDesc.shaderType);
+                    }
+                }
+            }
+        }
+
+        // skyrim format
+        private void CreateMergeNodes(NiFile file, NiNode rootNode, QuadDesc quad, List<ShapeDesc> shapes)
+        {
+            foreach (ShapeDesc shapeDesc in shapes)
+            {
+                rootNode.SetNameIndex(file.AddString("Scene Root"));
+                rootNode.SetFlags(14);
+                rootNode.SetFlags2(8);
+                //file.AddString("BSX");
+                NiTriShape triShape = new NiTriShape();
+                rootNode.AddChild(file.AddBlock((NiObject)triShape));
+                string str = shapeDesc.name;
+                triShape.SetNameIndex(file.AddString(str));
+                triShape.SetFlags(14);
+                triShape.SetFlags2(8);
+                triShape.SetData(file.AddBlock((NiObject)shapeDesc.geometry.ToNiTriShapeData(generateVertexColors)));
+                if (shapeDesc.isAlpha)
+                {
+                    NiAlphaProperty alphaProperty = new NiAlphaProperty();
+                    alphaProperty.SetFlags(4844);
+                    alphaProperty.SetThreshold(shapeDesc.alphaThreshold);
+                    triShape.SetBSProperty(1, file.AddBlock(alphaProperty));
+                }
+                else
+                {
+                    triShape.SetBSProperty(1, -1);
+                }
+                if (shapeDesc.shaderType == "bseffectshaderproperty")
+                {
+                    BSEffectShaderProperty effectShaderProperty = new BSEffectShaderProperty();
+                    effectShaderProperty = shapeDesc.effectShader;
+                    effectShaderProperty.SetSourceTexture(shapeDesc.textures[0]);
+                    triShape.SetBSProperty(0, file.AddBlock((NiObject)effectShaderProperty));
+                }
+                else if (shapeDesc.shaderType == "bslightingshaderproperty")
+                {
+                    BSLightingShaderProperty lightingShaderProperty = new BSLightingShaderProperty();
+                    lightingShaderProperty = shapeDesc.lightingShader;
+                    triShape.SetBSProperty(0, file.AddBlock((NiObject)lightingShaderProperty));
+                    BSShaderTextureSet shaderTextureSet = new BSShaderTextureSet();
+                    lightingShaderProperty.SetTextureSet(file.AddBlock((NiObject)shaderTextureSet));
+                    shaderTextureSet.SetNumTextures(9);
+                    shaderTextureSet.SetTexture(0, shapeDesc.textures[0]);
+                    shaderTextureSet.SetTexture(1, shapeDesc.textures[1]);
+                    shaderTextureSet.SetTexture(2, shapeDesc.textures[2]);
+                    shaderTextureSet.SetTexture(3, shapeDesc.textures[3]);
+                    shaderTextureSet.SetTexture(4, shapeDesc.textures[4]);
+                    shaderTextureSet.SetTexture(5, shapeDesc.textures[5]);
+                    shaderTextureSet.SetTexture(6, shapeDesc.textures[6]);
+                    shaderTextureSet.SetTexture(7, shapeDesc.textures[7]);
+                    shaderTextureSet.SetTexture(8, shapeDesc.textures[8]);
+                }
+                else if (shapeDesc.shaderType == "nitexturingproperty")
+                {
+                    BSLightingShaderProperty lightingShaderProperty = new BSLightingShaderProperty();
+                    if (generateVertexColors && shapeDesc.geometry.HasVertexColors())
+                    {
+                        lightingShaderProperty.SetShaderFlags2(lightingShaderProperty.GetShaderFlags2() | 32);
+                    }
+                    else
+                    {
+                        lightingShaderProperty.SetShaderFlags2(lightingShaderProperty.GetShaderFlags2() & 4294967263);
+                    }
+                    if (shapeDesc.materialProperty != null)
+                    {
+                        lightingShaderProperty.SetEmissiveColor(shapeDesc.materialProperty.GetEmissiveColor());
+                        lightingShaderProperty.SetEmissiveMultiple(shapeDesc.materialProperty.GetEmissiveMultiple());
+                        lightingShaderProperty.SetSpecularColor(shapeDesc.materialProperty.GetSpecularColor());
+                        lightingShaderProperty.SetGlossiness(shapeDesc.materialProperty.GetGlossiness());
+                        lightingShaderProperty.SetAlpha(shapeDesc.materialProperty.GetAlpha());
+                    }
+
+                    triShape.SetBSProperty(0, file.AddBlock((NiObject)lightingShaderProperty));
+                    BSShaderTextureSet shaderTextureSet = new BSShaderTextureSet();
+                    lightingShaderProperty.SetTextureSet(file.AddBlock((NiObject)shaderTextureSet));
+                    shaderTextureSet.SetNumTextures(9);
+                    shaderTextureSet.SetTexture(0, shapeDesc.textures[0]);
+                    shaderTextureSet.SetTexture(1, shapeDesc.textures[1]);
+                    shaderTextureSet.SetTexture(2, shapeDesc.textures[2]);
+                    shaderTextureSet.SetTexture(3, shapeDesc.textures[3]);
+                    shaderTextureSet.SetTexture(4, shapeDesc.textures[4]);
+                    shaderTextureSet.SetTexture(5, shapeDesc.textures[5]);
+                    shaderTextureSet.SetTexture(6, shapeDesc.textures[6]);
+                    shaderTextureSet.SetTexture(7, shapeDesc.textures[7]);
+                    shaderTextureSet.SetTexture(8, shapeDesc.textures[8]);
+                }
+                else
+                {
+                    if (verbose)
+                    {
+                        logFile.WriteLog(shapeDesc.staticModel + " " + shapeDesc.name + "unknown shader " + shapeDesc.shaderType);
+                    }
+                }
+            }
+        }
+
+        private void CreateLODNodesFO3(NiFile file, BSMultiBoundNode node, QuadDesc quad, List<ShapeDesc> shapes)
+        {
+            foreach (ShapeDesc shapeDesc in shapes)
+            {
+                BSSegmentedTriShape segmentedTriShape = new BSSegmentedTriShape();
                 node.AddChild(file.AddBlock((NiObject)segmentedTriShape));
                 node.SetCullMode(1U);
                 string str = "obj";
@@ -1492,14 +1481,11 @@ namespace LODGenerator
                 {
                     str = str + "HD";
                 }
-                //segmentedTriShape.SetNameIndex(file.AddString(str));
                 segmentedTriShape.SetFlags((ushort)14);
                 segmentedTriShape.SetFlags2((ushort)8);
-                //segmentedTriShape.SetBSProperty(1, -1);
                 segmentedTriShape.SetTranslation(new Vector3((float)quad.x * 4096f, (float)quad.y * 4096f, 0.0f));
                 segmentedTriShape.SetRotation(new Matrix33(true));
                 segmentedTriShape.SetScale((float)this.quadLevel);
-
                 BSShaderTextureSet shaderTextureSet = new BSShaderTextureSet();
                 BSShaderPPLightingProperty lightingShaderProperty = new BSShaderPPLightingProperty();
                 segmentedTriShape.SetProperties(file.AddBlock((NiObject)lightingShaderProperty));
@@ -1507,7 +1493,7 @@ namespace LODGenerator
                 shaderTextureSet.SetNumTextures(6);
                 shaderTextureSet.SetTexture(0, shapeDesc.textures[0]);
                 shaderTextureSet.SetTexture(1, shapeDesc.textures[1]);
-                segmentedTriShape.SetData(file.AddBlock((NiObject)shapeDesc.data));
+                segmentedTriShape.SetData(file.AddBlock((NiObject)shapeDesc.geometry.ToNiTriShapeData(generateVertexColors)));
                 for (int index = 0; index < 16; ++index)
                     segmentedTriShape.AddSegment(new BSSegment(0U, (ushort)0));
                 for (int index = 0; index < shapeDesc.segments.Count; ++index)
@@ -1525,7 +1511,154 @@ namespace LODGenerator
             }
         }
 
-        private void MergeNodes(List<ShapeDesc> shapes)
+        private void CreateLODNodesFO4(NiFile file, NiNode rootNode, QuadDesc quad, List<ShapeDesc> shapes)
+        {
+            foreach (ShapeDesc shapeDesc in shapes)
+            {
+                BSMultiBoundNode node = new BSMultiBoundNode();
+                rootNode.AddChild(file.AddBlock((NiObject)node));
+                BSSubIndexTriShape subIndexTriShape = new BSSubIndexTriShape();
+                int str0 = file.AddString("obj");
+                int str1 = file.AddString("");
+                int str2 = 0;
+                if (shapeDesc.isAlpha)
+                {
+                    str0 = file.AddString("obj-at");
+                }
+                node.SetNameIndex(str1);
+                subIndexTriShape = shapeDesc.geometry.ToBSSubIndexTriShape();
+                subIndexTriShape.UpdateVertexData();
+                subIndexTriShape.SetNameIndex(str0);
+                subIndexTriShape.SetFlags((ushort)14);
+                subIndexTriShape.SetFlags2((ushort)0);
+                subIndexTriShape.SetScale((float)this.quadLevel);
+                subIndexTriShape.SetRotation(new Matrix33(true));
+                subIndexTriShape.SetTranslation(new Vector3((float)quad.x * 4096f, (float)quad.y * 4096f, 0.0f));
+                subIndexTriShape.SetNumTriangles2(subIndexTriShape.GetNumTriangles() * 2);
+                for (int index = 0; index < 16; ++index)
+                {
+                    subIndexTriShape.AddSegment(new BSSITSSegment(0U, (ushort)0));
+                }
+                for (int index = 0; index < shapeDesc.segments.Count; ++index)
+                {
+                    BSSITSSegment segmentAtIndex = subIndexTriShape.GetSegmentAtIndex(shapeDesc.segments[index].id);
+                    segmentAtIndex.triangleOffset = shapeDesc.segments[index].startTriangle;
+                    segmentAtIndex.triangleCount = shapeDesc.segments[index].numTriangles;
+                    subIndexTriShape.SetSegment(shapeDesc.segments[index].id, segmentAtIndex);
+                }
+                for (int index = 15; index >= 0 && (int)subIndexTriShape.GetSegmentAtIndex(index).triangleCount == 0; --index)
+                {
+                    subIndexTriShape.RemoveSegment(index);
+                }
+                node.AddChild(file.AddBlock(subIndexTriShape));
+                if (shapeDesc.enableParent != 0)
+                {
+                    str2 = file.AddString("ToggleRefID");
+                    NiIntegerExtraData integerExtraData = new NiIntegerExtraData();
+                    integerExtraData.SetNameIndex(str2);
+                    integerExtraData.SetIntegerData(shapeDesc.enableParent);
+                    List<int> idx = new List<int>();
+                    idx.Add(file.AddBlock(integerExtraData));
+                    subIndexTriShape.SetExtraData(idx);
+                }
+                if (shapeDesc.isPassThru)
+                {
+                    if (shapeDesc.shaderType == "effectshader")
+                    {
+                        BSEffectShaderProperty effectShaderProperty = new BSEffectShaderProperty();
+                        effectShaderProperty = shapeDesc.effectShader;
+                        effectShaderProperty.SetTextureClampMode(shapeDesc.TextureClampMode);
+                        effectShaderProperty.SetSourceTexture(shapeDesc.textures[0]);
+                        subIndexTriShape.SetBSProperty(0, file.AddBlock((NiObject)effectShaderProperty));
+                    }
+                    else
+                    {
+                        BSLightingShaderProperty lightingShaderProperty = new BSLightingShaderProperty();
+                        lightingShaderProperty = shapeDesc.lightingShader;
+                        lightingShaderProperty.SetTextureClampMode(shapeDesc.TextureClampMode);
+                        subIndexTriShape.SetBSProperty(0, file.AddBlock((NiObject)lightingShaderProperty));
+                        BSShaderTextureSet shaderTextureSet = new BSShaderTextureSet();
+                        lightingShaderProperty.SetTextureSet(file.AddBlock((NiObject)shaderTextureSet));
+                        lightingShaderProperty.SetWetMaterialIndex(str1);
+                        shaderTextureSet.SetNumTextures(10);
+                        shaderTextureSet.SetTexture(0, shapeDesc.textures[0]);
+                        shaderTextureSet.SetTexture(1, shapeDesc.textures[1]);
+                        shaderTextureSet.SetTexture(2, shapeDesc.textures[2]);
+                        shaderTextureSet.SetTexture(3, shapeDesc.textures[3]);
+                        shaderTextureSet.SetTexture(4, shapeDesc.textures[4]);
+                        shaderTextureSet.SetTexture(5, shapeDesc.textures[5]);
+                        shaderTextureSet.SetTexture(6, shapeDesc.textures[6]);
+                        shaderTextureSet.SetTexture(7, shapeDesc.textures[7]);
+                        shaderTextureSet.SetTexture(8, shapeDesc.textures[8]);
+                        shaderTextureSet.SetTexture(9, shapeDesc.textures[9]);
+                    }
+                }
+                else
+                {
+                    BSLightingShaderProperty lightingShaderProperty = new BSLightingShaderProperty();
+                    subIndexTriShape.SetBSProperty(0, file.AddBlock((NiObject)lightingShaderProperty));
+                    lightingShaderProperty.SetNameIndex(str1);
+                    int textureBlock = -1;
+                    if (quad.textureBlockIndex.ContainsKey(shapeDesc.textures[0]))
+                    {
+                        textureBlock = quad.textureBlockIndex[shapeDesc.textures[0]];
+                    }
+                    else
+                    {
+                        BSShaderTextureSet shaderTextureSet = new BSShaderTextureSet();
+                        shaderTextureSet.SetNumTextures(10);
+                        shaderTextureSet.SetTexture(0, "data\\" + shapeDesc.textures[0]);
+                        shaderTextureSet.SetTexture(1, "data\\" + shapeDesc.textures[1]);
+                        shaderTextureSet.SetTexture(7, "data\\" + shapeDesc.textures[7]);
+                        textureBlock = file.AddBlock((NiObject)shaderTextureSet);
+                        quad.textureBlockIndex.Add(shapeDesc.textures[0], textureBlock);
+                    }
+                    lightingShaderProperty.SetTextureSet(textureBlock);
+                    lightingShaderProperty.SetWetMaterialIndex(str1);
+                    lightingShaderProperty.SetTextureClampMode(shapeDesc.TextureClampMode);
+                    lightingShaderProperty.SetGlossiness(1f);
+                    if (this.useBacklightPower)
+                    {
+                        lightingShaderProperty.SetBacklightPower(shapeDesc.backlightPower);
+                    }
+                    uint num1 = 2151677953U;
+                    uint num2 = 5U;
+                    /*if (shapeDesc.hasVertexColor)
+                    {
+                        num2 |= 32U;
+                    }*/
+                    if (shapeDesc.isDoubleSided || (this.alphaDoublesided && shapeDesc.isAlpha))
+                    {
+                        num2 |= 16U;
+                    }
+                    lightingShaderProperty.SetShaderFlags1(num1);
+                    lightingShaderProperty.SetShaderFlags2(num2);
+                }
+                if (shapeDesc.isAlpha)
+                {
+                    NiAlphaProperty alphaProperty = new NiAlphaProperty();
+                    alphaProperty.SetNameIndex(str1);
+                    alphaProperty.SetFlags(4844);
+                    if (this.useAlphaThreshold)
+                    {
+                        alphaProperty.SetThreshold(shapeDesc.alphaThreshold);
+                    }
+                    else
+                    {
+                        alphaProperty.SetThreshold(128);
+                    }
+                    subIndexTriShape.SetBSProperty(1, file.AddBlock(alphaProperty));
+                }
+                else
+                {
+                    subIndexTriShape.SetBSProperty(1, -1);
+                }
+                this.GenerateMultibound(file, node, quad, shapeDesc.boundingBox);
+                node.SetCullMode(1U);
+            }
+        }
+
+        private void MergeShapes(List<ShapeDesc> shapes)
         {
             int count = shapes.Count;
             Dictionary<string, List<ShapeDesc>> dictionary = new Dictionary<string, List<ShapeDesc>>();
@@ -1534,34 +1667,58 @@ namespace LODGenerator
                 ShapeDesc shape = new ShapeDesc();
                 shape = shapes[index];
                 string key = shape.textures[0].ToLower(CultureInfo.InvariantCulture);
-                // use vertex color flag to seperate?
-                // less draw calls more important than reducing a few bytes?
-                // overall it is not even reducing bytes... so no
-                /*if (useOptimizer && shape.data.HasVertexColors())
+                // vanilla has VC only in level 4, but do for HD and PassThru is in higher level - no point in doing VC if they are all white
+                if ((this.quadLevel == 4 || shape.isHighDetail || shape.isPassThru) && shape.hasVertexColor && !shape.allWhite)
                 {
                     key = key + "_VC";
-                }*/
+                }
+                if (shape.geometry.HasTangents() && shape.geometry.HasBitangents())
+                { 
+                    key = key + "_TB";
+                }
                 // use material name from list file, Snow/Ash
                 if (!this.ignoreMaterial && shape.material != "")
                 {
                     key = key + "_" + shape.material;
                 }
-                if (shape.shaderHash != "")
+                if (shape.isPassThru && shape.shaderHash != "")
                 {
                     key = key + "_" + shape.shaderHash;
                 }
-                // only level 4 should have HD
+                // only level 4 should have HD - only snow/ash shader care about HD flag
                 if (shape.isHighDetail && (this.quadLevel == 4 || useHDFlag))
                 {
                     key = key + "_HD";
                 }
                 // double-sided
-                if (shape.isDoubleSided)
+                if (shape.isDoubleSided || (this.alphaDoublesided && shape.isAlpha))
                 {
                     key = key + "_DS";
                 }
+                if (shape.isAlpha)
+                {
+                    key = key + "_AT";
+                }
+                if (this.useAlphaThreshold)
+                {
+                    key = key + "_" + shape.alphaThreshold;
+                }
+                if (this.useBacklightPower)
+                {
+                    key = key + "_" + shape.backlightPower;
+                }
+                if (shape.enableParent != 0)
+                {
+                    key = key + "_" + shape.enableParent;
+                }
                 // clamp mode
                 key = key + "_" + shape.TextureClampMode;
+                if (!dontGroup && shape.isGroup)
+                {
+                    key = key + "_" + index;
+                }
+                //Console.WriteLine(index + " = " + shape.name + " = " + key);
+
                 if (dictionary.ContainsKey(key))
                 {
                     dictionary[key].Add(shape);
@@ -1571,6 +1728,7 @@ namespace LODGenerator
                     dictionary.Add(key, new List<ShapeDesc>());
                     dictionary[key].Add(shape);
                 }
+
             }
             shapes.Clear();
             foreach (KeyValuePair<string, List<ShapeDesc>> keyValuePair in dictionary)
@@ -1585,146 +1743,85 @@ namespace LODGenerator
                     uint num1 = 0U;
                     uint num2 = 0U;
                     int num3 = -1;
-                    NiTriShape niTriShape = new NiTriShape();
-                    NiTriShapeData data = new NiTriShapeData();
+                    //NiTriShape niTriShape = new NiTriShape();
+                    //NiTriShapeData data = new NiTriShapeData();
+                    Geometry geometry = new Geometry();
                     List<ShapeDesc> list = keyValuePair.Value;
-                    string str1 = list[0].textures[0];
-                    string str2 = list[0].textures[1];
-                    string str3 = list[0].textures[2];
-                    string str4 = list[0].textures[3];
-                    string str5 = list[0].textures[4];
-                    string str6 = list[0].textures[5];
-                    string str7 = list[0].textures[6];
-                    string str8 = list[0].textures[7];
-                    string str9 = list[0].textures[8];
-                    string str10 = list[0].material;
-                    string shadertype = list[0].shaderType;
-                    string shaderhash = list[0].shaderHash;
-                    BSEffectShaderProperty effectshader = list[0].effectShader;
-                    BSLightingShaderProperty lightingshader = list[0].lightingShader;
-                    //bool isVC = list[0].hasVertexColor;
-                    bool isPT = list[0].isPassThru;
-                    bool isHD = list[0].isHighDetail;
-                    // double-sided
-                    bool isDS = list[0].isDoubleSided;
-                    // clamp mode
-                    uint clampmode = list[0].TextureClampMode;
-                    bool allwhite = true;
-                    if (isPT)
+                    ShapeDesc baseShapeDesc = new ShapeDesc(list[0]);
+                    bool hasVertexColors = false;
+                    if ((this.quadLevel == 4 || baseShapeDesc.isHighDetail) && baseShapeDesc.hasVertexColor && !baseShapeDesc.allWhite)
                     {
-                        allwhite = false;
+                        hasVertexColors = true;
                     }
                     list.Sort((Comparison<ShapeDesc>)((a, b) =>
                     {
                         if (a.segments[0].id > b.segments[0].id)
+                        {
                             return 1;
+                        }
                         return a.segments[0].id < b.segments[0].id ? -1 : 0;
                     }));
-                    ShapeDesc shapeDesc = new ShapeDesc();
+                    ShapeDesc shapeDesc = new ShapeDesc(baseShapeDesc);
                     shapeDesc.boundingBox.Set(float.MaxValue, float.MinValue, float.MaxValue, float.MinValue, float.MaxValue, float.MinValue);
                     for (int index1 = 0; index1 < list.Count; ++index1)
                     {
-                        NiTriShapeData niTriShapeData = list[index1].data;
-                        List<Vector3> vertices = niTriShapeData.GetVertices();
-                        List<Triangle> triangles = new List<Triangle>(niTriShapeData.GetTriangles());
-                        if ((uint)data.GetNumVertices() + (uint)vertices.Count > (uint)ushort.MaxValue || (uint)data.GetNumTriangles() + (uint)triangles.Count > (uint)ushort.MaxValue)
+                        if ((Game.Mode == "merge4" || Game.Mode == "merge5") && index1 > 0 && list[0].shapeHash == list[index1].shapeHash)
                         {
-                            data.SetCenter(shapeDesc.boundingBox.GetCenter() / (float)this.quadLevel);
-                            data.SetRadius(this.CalcRadius(data));
+                            logFile.WriteLog("Ignoring duplicate shape with name #" + index1 + ": " + list[index1].name + ", #0: " + list[0].name);
+                            continue;
+                        }
+                        Geometry geometrySegment = list[index1].geometry;
+                        List<Vector3> vertices = geometrySegment.GetVertices();
+                        List<Triangle> triangles = new List<Triangle>(geometrySegment.GetTriangles());
+                        if ((uint)geometry.GetNumVertices() + (uint)vertices.Count > (uint)ushort.MaxValue || (uint)geometry.GetNumTriangles() + (uint)triangles.Count > (uint)ushort.MaxValue)
+                        {
                             shapeDesc.segments.Add(segmentDesc);
-                            shapeDesc.shape = niTriShape;
-                            shapeDesc.data = data;
-                            shapeDesc.textures = new string[9];
-                            shapeDesc.textures[0] = str1;
-                            shapeDesc.textures[1] = str2;
-                            shapeDesc.textures[2] = str3;
-                            shapeDesc.textures[3] = str4;
-                            shapeDesc.textures[4] = str5;
-                            shapeDesc.textures[5] = str6;
-                            shapeDesc.textures[6] = str7;
-                            shapeDesc.textures[7] = str8;
-                            shapeDesc.textures[8] = str9;
-                            shapeDesc.material = str4;
-                            if (isPT)
-                            {
-                                shapeDesc.isPassThru = true;
-                                allwhite = false;
-                                if (shaderhash != "")
-                                {
-                                    shapeDesc.shaderHash = shaderhash;
-                                    shapeDesc.shaderType = shadertype;
-                                    shapeDesc.effectShader = effectshader;
-                                    shapeDesc.lightingShader = lightingshader;
-                                }
-                            }
-                            shapeDesc.isHighDetail = isHD;
-                            //shapeDesc.hasVertexColor = isVC;
-                            // double-sided
-                            shapeDesc.isDoubleSided = isDS;
-                            //clamp mode
-                            shapeDesc.TextureClampMode = clampmode;
+                            shapeDesc.geometry = geometry;
                             shapes.Add(shapeDesc);
-                            shapeDesc = new ShapeDesc();
+
+                            shapeDesc = new ShapeDesc(baseShapeDesc);
                             shapeDesc.boundingBox.Set(float.MaxValue, float.MinValue, float.MaxValue, float.MinValue, float.MaxValue, float.MinValue);
-                            niTriShape = new NiTriShape();
-                            data = new NiTriShapeData();
+                            geometry = new Geometry();
                             num1 = 0U;
                             num2 = 0U;
                             num3 = -1;
                         }
-                        for (int index2 = 0; index2 < (int)niTriShapeData.GetNumVertices(); ++index2)
+                        for (int index2 = 0; index2 < (int)geometrySegment.GetNumVertices(); ++index2)
                         {
                             Vector3 vector3 = vertices[index2] * (float)this.quadLevel;
                             shapeDesc.boundingBox.GrowByVertex(vector3);
                         }
-                        data.AppendVertices(niTriShapeData.GetVertices());
-                        data.AppendNormals(niTriShapeData.GetNormals());
-                        data.AppendUVCoords(niTriShapeData.GetUVCoords());
+                        geometry.AppendVertices(geometrySegment.GetVertices());
+                        geometry.AppendNormals(geometrySegment.GetNormals());
+                        geometry.AppendUVCoords(geometrySegment.GetUVCoords());
                         if (this.generateTangents)
                         {
-                            //str3.Length != 0
-                            if (!useOptimizer || (useOptimizer && (this.quadLevel == 4 || isHD || isPT)))
+                            if (!useOptimizer || (useOptimizer && (this.quadLevel == 4 || baseShapeDesc.isHighDetail || baseShapeDesc.isPassThru)))
                             {
-                                data.AppendTangents(niTriShapeData.GetTangents());
-                                data.AppendBitangents(niTriShapeData.GetBitangents());
+                                geometry.AppendTangents(geometrySegment.GetTangents());
+                                geometry.AppendBitangents(geometrySegment.GetBitangents());
                             }
                         }
-                        // only level 4 should have vertex colors
-                        if (isPT || (this.generateVertexColors && (this.quadLevel == 4 || isHD)))
+                        // genenerate missing vertex colors
+                        List<Color4> colors = geometrySegment.GetVertexColors();
+                        if (hasVertexColors && colors.Count == 0)
                         {
-                            List<Color4> colors = new List<Color4>();
-                            if (niTriShapeData.HasVertexColors())
+                            for (int index2 = 0; index2 < vertices.Count; ++index2)
                             {
-                                colors = niTriShapeData.GetVertexColors();
-                                data.AppendVertexColors(colors);
-                                if (allwhite)
-                                {
-                                    for (int index2 = 0; index2 < colors.Count; index2++)
-                                    {
-                                        if (colors[index2][0] != 1f || colors[index2][2] != 1f || colors[index2][2] != 1f)
-                                        {
-                                            allwhite = false;
-                                            break;
-                                        }
-                                    }
-                                }
+                                colors.Add(new Color4(1f, 1f, 1f, 1f));
                             }
-                            else
-                            {
-                                for (int index2 = 0; index2 < vertices.Count; ++index2)
-                                {
-                                    colors.Add(new Color4(1f, 1f, 1f, 1f));
-                                }
-                                data.AppendVertexColors(colors);
-                            }
+                        }
+                        if (hasVertexColors)
+                        {
+                            geometry.AppendVertexColors(colors);
                         }
                         List<Triangle> trianglesNew = new List<Triangle>();
-                        for (int index2 = 0; index2 < (int)niTriShapeData.GetNumTriangles(); ++index2)
+                        for (int index2 = 0; index2 < (int)geometrySegment.GetNumTriangles(); ++index2)
                         {
                             trianglesNew.Add(new Triangle((ushort)(triangles[index2][0] + num1), (ushort)(triangles[index2][1] + num1), (ushort)(triangles[index2][2] + num1)));
                         }
-                        data.AppendTriangles(trianglesNew);
-                        num1 += (uint)niTriShapeData.GetNumVertices();
+                        geometry.AppendTriangles(trianglesNew);
+                        num1 += (uint)geometrySegment.GetNumVertices();
                         if (list[index1].segments[0].id != num3)
                         {
                             if (num3 != -1)
@@ -1739,52 +1836,20 @@ namespace LODGenerator
                             num3 = list[index1].segments[0].id;
                         }
                         else
-                            segmentDesc.numTriangles += list[index1].data.GetNumTriangles();
-                    }
-                    data.SetCenter(shapeDesc.boundingBox.GetCenter() / (float)this.quadLevel);
-                    data.SetRadius(this.CalcRadius(data));
-                    shapeDesc.segments.Add(segmentDesc);
-                    shapeDesc.shape = niTriShape;
-                    shapeDesc.data = data;
-                    shapeDesc.textures = new string[9];
-                    shapeDesc.textures[0] = str1;
-                    shapeDesc.textures[1] = str2;
-                    shapeDesc.textures[2] = str3;
-                    shapeDesc.textures[3] = str4;
-                    shapeDesc.textures[4] = str5;
-                    shapeDesc.textures[5] = str6;
-                    shapeDesc.textures[6] = str7;
-                    shapeDesc.textures[7] = str8;
-                    shapeDesc.textures[8] = str9;
-                    shapeDesc.material = str10;
-                    if (isPT)
-                    {
-                        shapeDesc.isPassThru = true;
-                        allwhite = false;
-                        if (shaderhash != "")
                         {
-                            shapeDesc.shaderHash = shaderhash;
-                            shapeDesc.shaderType = shadertype;
-                            shapeDesc.effectShader = effectshader;
-                            shapeDesc.lightingShader = lightingshader;
+                            segmentDesc.numTriangles += list[index1].geometry.GetNumTriangles();
                         }
                     }
-                    //shapeDesc.hasVertexColor = isVC;
-                    shapeDesc.isHighDetail = isHD;
-                    // double-sided
-                    shapeDesc.isDoubleSided = isDS;
-                    // clamp mode
-                    shapeDesc.TextureClampMode = clampmode;
-                    if (allwhite)
+                    //data.SetCenter(shapeDesc.boundingBox.GetCenter() / (float)this.quadLevel);
+                    //data.SetRadius(this.CalcRadius(data));
+                    shapeDesc.segments.Add(segmentDesc);
+                    shapeDesc.hasVertexColor = hasVertexColors;
+                    if (!this.generateVertexColors)
                     {
-                        shapeDesc.data.SetHasVertexColors(false);
+                        geometry.SetVertexColors(new List<Color4>());
                         shapeDesc.hasVertexColor = false;
                     }
-                    else
-                    {
-                        shapeDesc.data.SetHasVertexColors(true);
-                        shapeDesc.hasVertexColor = true;
-                    }
+                    shapeDesc.geometry = geometry;
                     shapes.Add(shapeDesc);
                 }
             }
@@ -1808,7 +1873,7 @@ namespace LODGenerator
         {
             bool flag = false;
             string str = "";
-            if (Game.Mode == "fnv")
+            if (Game.Mode == "fo3")
             {
                 str = "meshes\\landscape\\lod\\" + this.worldspaceName + "\\" + this.worldspaceName + ".Level" + this.quadLevel.ToString() + ".X" + quad.x.ToString() + ".Y" + quad.y.ToString() + ".nif";
             }
@@ -1837,22 +1902,23 @@ namespace LODGenerator
                     BSMultiBoundAABB bsMultiBoundAabb1 = bsMultiBound1 != null ? (BSMultiBoundAABB)niFile.GetBlockAtIndex(bsMultiBound1.GetData()) : (BSMultiBoundAABB)null;
                     if (bsMultiBound1 != null && bsMultiBoundAabb1 != null)
                     {
-                        NiTriShape niTriShape = (NiTriShape)niFile.GetBlockAtIndex(bsMultiBoundNode1.GetChildAtIndex(0));
-                        if (niTriShape != null)
+                        NiTriBasedGeom geom = (NiTriBasedGeom)niFile.GetBlockAtIndex(bsMultiBoundNode1.GetChildAtIndex(0));
+                        //NiTriShape niTriShape = (NiTriShape)niFile.GetBlockAtIndex(bsMultiBoundNode1.GetChildAtIndex(0));
+                        if (geom != null)
                         {
-                            NiTriShapeData data = (NiTriShapeData)niFile.GetBlockAtIndex(niTriShape.GetData());
+                            ShapeDesc shapedesc = new ShapeDesc(this.gameDir, niFile, geom, new StaticDesc(), this.quadIndex, PassThruMeshList, skyblivionTexPath, false, false, true, verbose, this.logFile);
                             Vector3 vector3_1 = bsMultiBoundAabb1.GetPosition() / 4;
                             Vector3 vector3_2 = bsMultiBoundAabb1.GetExtent() / 4;
                             boundingBox.Set(vector3_1[0] - vector3_2[0], vector3_1[0] + vector3_2[0], vector3_1[1] - vector3_2[1], vector3_1[1] + vector3_2[1], vector3_1[2] - vector3_2[2], vector3_1[2] + vector3_2[2]);
-                            List<Vector3> vertices = data.GetVertices();
-                            if (Game.Mode == "fnv")
+                            List<Vector3> vertices = shapedesc.geometry.GetVertices();
+                            if (Game.Mode == "fo3")
                             {
                                 for (int index = 0; index < vertices.Count; index++)
                                 {
                                     vertices[index] = vertices[index] / quadLevel;
                                 }
                             }
-                            List<Triangle> triangles = data.GetTriangles();
+                            List<Triangle> triangles = shapedesc.geometry.GetTriangles();
                             for (int index = 0; index < triangles.Count; index++)
                             {
                                 Vector3 vertA = vertices[triangles[index][0]];
@@ -1864,62 +1930,57 @@ namespace LODGenerator
                                     --index;
                                 }
                             }
-                            data.SetVertices(vertices);
-                            data.SetTriangles(triangles);
-                            qt = new QuadTree(data, quadLevel);
+                            shapedesc.geometry.SetVertices(vertices);
+                            shapedesc.geometry.SetTriangles(triangles);
+                            qt = new QuadTree(shapedesc, quadLevel);
                             if (qt != null)
+                            {
                                 flag = true;
+                            }
                         }
                     }
-                    if (Game.Mode != "fnv" && this.removeUnderwaterFaces && bsMultiBoundNode1.GetNumChildren() > 1U)
+                    if (Game.Mode != "fo3" && this.removeUnderwaterFaces && bsMultiBoundNode1.GetNumChildren() > 1U)
                     {
                         BSMultiBoundNode bsMultiBoundNode2 = (BSMultiBoundNode)niFile.GetBlockAtIndex(bsMultiBoundNode1.GetChildAtIndex(1));
                         if (bsMultiBoundNode2 != null)
                         {
                             BSMultiBound bsMultiBound2 = (BSMultiBound)niFile.GetBlockAtIndex(bsMultiBoundNode2.GetMultiBound());
                             BSMultiBoundAABB bsMultiBoundAabb2 = (BSMultiBoundAABB)niFile.GetBlockAtIndex(bsMultiBound2.GetData());
-                            NiTriShapeData datacombined = new NiTriShapeData();
+                            //NiTriShapeData datacombined = new NiTriShapeData();
+                            //NiTriBasedGeom geom = new NiTriBasedGeom();
+                            ShapeDesc shapecombined = new ShapeDesc();
                             ushort numVertices = 0;
                             for (int index = 0; index < bsMultiBoundNode2.GetNumChildren(); index++)
                             {
-                                NiObject blockAtIndex = niFile.GetBlockAtIndex(bsMultiBoundNode2.GetChildAtIndex(index));
-                                if (blockAtIndex != null)
+                                //NiObject blockAtIndex = niFile.GetBlockAtIndex(bsMultiBoundNode2.GetChildAtIndex(index));
+                                NiTriBasedGeom geom = (NiTriBasedGeom)niFile.GetBlockAtIndex(bsMultiBoundNode2.GetChildAtIndex(index));
+                                if (geom != null)
                                 {
-                                    NiTriShapeData data;
-                                    if (blockAtIndex.GetClassName() == "BSSegmentedTriShape")
-                                    {
-                                        BSSegmentedTriShape segmentedTriShape = (BSSegmentedTriShape)blockAtIndex;
-                                        data = (NiTriShapeData)niFile.GetBlockAtIndex(segmentedTriShape.GetData());
-                                    }
-                                    else
-                                    {
-                                        NiTriShape niTriShape = (NiTriShape)blockAtIndex;
-                                        data = (NiTriShapeData)niFile.GetBlockAtIndex(niTriShape.GetData());
-                                    }
+                                    ShapeDesc shapedesc = new ShapeDesc(this.gameDir, niFile, geom, new StaticDesc(), this.quadIndex, PassThruMeshList, skyblivionTexPath, false, false, true, verbose, this.logFile);
                                     if (index == 0)
                                     {
-                                        datacombined = data;
-                                        numVertices += data.GetNumVertices();
+                                        shapecombined = shapedesc;
+                                        numVertices += shapedesc.geometry.GetNumVertices();
                                     }
                                     else
                                     {
-                                        datacombined.AppendVertices(data.GetVertices());
-                                        List<Triangle> triangles = new List<Triangle>(data.GetTriangles());
+                                        shapecombined.geometry.AppendVertices(shapedesc.geometry.GetVertices());
+                                        List<Triangle> triangles = new List<Triangle>(shapedesc.geometry.GetTriangles());
                                         for (int index2 = 0; index2 < triangles.Count; ++index2)
                                         {
                                             triangles[index2][0] += numVertices;
                                             triangles[index2][1] += numVertices;
                                             triangles[index2][2] += numVertices;
                                         }
-                                        datacombined.AppendTriangles(triangles);
-                                        numVertices += data.GetNumVertices();
+                                        shapecombined.geometry.AppendTriangles(triangles);
+                                        numVertices += shapedesc.geometry.GetNumVertices();
                                     }
                                 }
                             }
                             Vector3 vector3_1 = bsMultiBoundAabb2.GetPosition() / 4;
                             Vector3 vector3_2 = bsMultiBoundAabb2.GetExtent() / 4;
                             BBox boundingBox1 = new BBox(vector3_1[0] - vector3_2[0], vector3_1[0] + vector3_2[0], vector3_1[1] - vector3_2[1], vector3_1[1] + vector3_2[1], vector3_1[2] - vector3_2[2], vector3_1[2] + vector3_2[2]);
-                            waterQt = new QuadTree(datacombined, quadLevel);
+                            waterQt = new QuadTree(shapecombined, quadLevel);
                         }
                     }
                 }
@@ -1929,8 +1990,107 @@ namespace LODGenerator
 
         public void GenerateLOD(int index, int level, List<StaticDesc> statics)
         {
+            if (Game.Mode == "convert4" || Game.Mode == "convert5")
+            {
+                if (level > 1)
+                {
+                    return;
+                }
+                this.quadLevel = 1;
+                this.quadOffset = 0;
+                List<Thread> threads = new List<Thread>();
+                for (int index1 = 0; index1 < statics.Count; index1++)
+                {
+                    StaticDesc stat = statics[index1];
+                    while (threads.Count == 8)
+                    {
+                        for (int index2 = 0; index2 < threads.Count; ++index2)
+                        {
+                            if (!threads[index2].IsAlive)
+                            {
+                                threads.RemoveAt(index2);
+                                --index2;
+                            }
+                        }
+                    }
+                    threads.Add(new Thread((ParameterizedThreadStart)(state =>
+                    {
+                        List<ShapeDesc> shapes = new List<ShapeDesc>();
+                        QuadDesc quad = new QuadDesc(true);
+                        quad.x = 0;
+                        quad.y = 0;
+                        quad.statics = new List<StaticDesc>();
+                        quad.statics.Add((StaticDesc)state);
+                        string fileName = Path.Combine(this.outputDir, stat.staticModels[index]);
+                        DateTime now = DateTime.Now;
+                        //if (verbose)
+                        //{
+                        //    logFile.WriteLog("Started " + fileName);
+                        //}
+                        shapes.AddRange(this.ParseNif(quad, quad.statics[index], index));
+                        if (this.mergeShapes)
+                        {
+                            this.MergeShapes(shapes);
+                        }
+                        NiFile file = new NiFile();
+                        NiNode rootNiNode = new NiNode();
+                        if (Game.Mode == "convert4")
+                        {
+                            file.SetHeaderString("Gamebryo File Format, Version 20.0.0.5");
+                            file.SetVersion(335544325U);
+                            file.SetUserVersion(11U);
+                            file.SetUserVersion2(11U);
+                            rootNiNode.SetFlags(0);
+                            rootNiNode.SetNameIndex(file.AddString("Scene Root"));
+                        }
+                        else if (Game.Mode != "convert5")
+                        {
+                            rootNiNode.SetNameIndex(file.AddString("obj"));
+                        }
+                        file.AddBlock(rootNiNode);
+                        if (Game.Mode == "convert5")
+                        {
+                            this.CreateMergeNodes(file, rootNiNode, quad, shapes);
+                            if (rootNiNode.GetNumChildren() == 0)
+                            {
+                                return;
+                            }
+                        }
+                        else if (Game.Mode == "convert4")
+                        {
+                            this.CreateMerge4Nodes(file, rootNiNode, quad, shapes);
+                            if (rootNiNode.GetNumChildren() == 0)
+                            {
+                                return;
+                            }
+                        }
+                        if (!Directory.Exists(Path.GetDirectoryName(fileName)))
+                        {
+                            Directory.CreateDirectory(Path.GetDirectoryName(fileName));
+                        }
+                        file.Write(fileName, logFile);
+                        if (verbose)
+                        {
+                            this.logFile.WriteLog("Created " + fileName + " " + (DateTime.Now - now).ToString());
+                        }
+                    })));
+                    threads[threads.Count - 1].Start((object)stat);
+                }
+                while (threads.Count > 0)
+                {
+                    for (int index1 = 0; index1 < threads.Count; ++index1)
+                    {
+                        if (!threads[index1].IsAlive)
+                        {
+                            threads.RemoveAt(index1);
+                            --index1;
+                        }
+                    }
+                }
+                return;
+            }
             this.quadIndex = index;
-            if (Game.Mode == "fnv")
+            if (Game.Mode == "fo3")
             {
                 this.quadLevel = 4;
                 this.quadOffset = 16384f;
@@ -1939,13 +2099,28 @@ namespace LODGenerator
                     return;
                 }
             }
+            else if (Game.Mode == "merge4" || Game.Mode == "merge5")
+            {
+                this.quadLevel = 4;
+                this.quadOffset = 0;
+                if (level > 1)
+                {
+                    return;
+                }
+            }
             else
             {
                 this.quadLevel = level * 4;
                 this.quadOffset = (float)level * 16384f;
+                if (Game.Mode != "fo4" && level > 4)
+                {
+                    return;
+                }
             }
             if (this.lodLevelToGenerate != -1 && this.lodLevelToGenerate != this.quadLevel)
+            {
                 return;
+            }
             List<QuadDesc> list1 = this.SortMeshesIntoQuads(statics);
             if (this.removeUnseenFaces)
             {
@@ -1980,6 +2155,33 @@ namespace LODGenerator
                     list2.Add(new Thread((ParameterizedThreadStart)(state =>
                     {
                         QuadDesc quad = (QuadDesc)state;
+                        string fileName = "";
+                        if (Game.Mode == "fo3")
+                        {
+                            if (level == 1)
+                            {
+                                fileName = this.outputDir + "\\" + this.worldspaceName + ".Level4.X" + quad.x.ToString() + ".Y" + quad.y.ToString() + ".nif";
+                            }
+                            else
+                            {
+                                fileName = this.outputDir + "\\" + this.worldspaceName + ".Level4.High.X" + quad.x.ToString() + ".Y" + quad.y.ToString() + ".nif";
+                            }
+                        }
+                        else if (Game.Mode == "merge4" || Game.Mode == "merge5")
+                        {
+                            fileName = this.outputDir + "\\" + this.worldspaceName + ".nif";
+                        }
+                        else
+                        {
+                            fileName = this.outputDir + "\\" + this.worldspaceName + "." + this.quadLevel.ToString() + "." + quad.x.ToString() + "." + quad.y.ToString() + ".bto";
+                        }
+
+                        /*if (File.Exists(fileName))
+                        {
+                            logFile.WriteLog("File already exists: " + fileName);
+                            return;
+                        }*/
+
                         if (this.verbose)
                         {
                             this.logFile.WriteLog("Started LOD level " + this.quadLevel.ToString() + " coord [" + quad.x.ToString() + ", " + quad.y.ToString() + "]");
@@ -1987,67 +2189,114 @@ namespace LODGenerator
                         NiFile file = new NiFile();
                         NiNode rootNiNode = new NiNode();
                         BSMultiBoundNode rootBSMultiBoundNode = new BSMultiBoundNode();
-                        if (Game.Mode != "fnv")
+
+                        // defaults are for TES5
+                        if (Game.Mode == "fo3")
+                        {
+                            file.SetUserVersion(11U);
+                            file.SetUserVersion2(34U);
+                            rootBSMultiBoundNode.SetFlags(2062);
+                            rootBSMultiBoundNode.SetFlags2(8);
+                        }
+                        else if (Game.Mode == "fo4")
+                        {
+                            file.SetUserVersion(12U);
+                            file.SetUserVersion2(130U);
+                        }
+                        else if (Game.Mode == "merge4")
+                        {
+                            file.SetHeaderString("Gamebryo File Format, Version 20.0.0.5");
+                            file.SetVersion(335544325U);
+                            file.SetUserVersion(11U);
+                            file.SetUserVersion2(11U);
+                            rootNiNode.SetFlags(0);
+                        }
+
+                        if (Game.Mode != "fo3")
                         {
                             file.AddBlock((NiObject)rootNiNode);
-                            rootNiNode.SetNameIndex(file.AddString("obj"));
                         }
                         else
                         {
                             file.AddBlock((NiObject)rootBSMultiBoundNode);
+                        }
+                        if (Game.Mode == "merge4")
+                        {
+                            rootNiNode.SetNameIndex(file.AddString("Scene Root"));
+                        }
+                        else if (Game.Mode != "fo3" && Game.Mode != "merge5")
+                        {
+                            rootNiNode.SetNameIndex(file.AddString("obj"));
                         }
                         List<ShapeDesc> shapes = new List<ShapeDesc>();
                         for (int index11 = 0; index11 < quad.statics.Count; ++index11)
                         {
                             if (!(quad.statics[index11].staticModels[index] == ""))
                             {
-                                if (Game.Mode == "fnv")
-                                {
-                                    shapes.AddRange((IEnumerable<ShapeDesc>)this.ParseNif(quad, quad.statics[index11], index, file, rootNiNode));
-                                }
-                                else
-                                {
-                                    shapes.AddRange((IEnumerable<ShapeDesc>)this.ParseNif(quad, quad.statics[index11], index, file, rootBSMultiBoundNode));
-                                }
+                                shapes.AddRange(this.ParseNif(quad, quad.statics[index11], index));
                             }
                         }
                         if (this.mergeShapes)
-                            this.MergeNodes(shapes);
-                        if (Game.Mode != "fnv")
                         {
-                            this.CreateLODNodes(file, rootNiNode, quad, shapes);
-                            if ((int)rootNiNode.GetNumChildren() == 0)
-                            {
-                                //logFile.WriteLog("quad empty " + quadLevel + " " + quad.x + ", " + quad.y);
-                                //return;
-                            }
+                            this.MergeShapes(shapes);
                         }
-                        else
+                        if (Game.Mode == "fo3")
                         {
-                            this.CreateLODNodesFNV(file, rootBSMultiBoundNode, quad, shapes);
+                            this.CreateLODNodesFO3(file, rootBSMultiBoundNode, quad, shapes);
+                            if (verbose)
+                            {
+                                this.logFile.WriteLog("Finished LOD level " + this.quadLevel.ToString() + " coord [" + quad.x.ToString() + ", " + quad.y.ToString() + "] [" + quad.outValues.totalTriCount.ToString() + "/" + quad.outValues.reducedTriCount.ToString() + "]");
+                            }
                             if ((int)rootBSMultiBoundNode.GetNumChildren() == 0)
                             {
-                                //logFile.WriteLog("quad empty " + quadLevel + " " + quad.x + ", " + quad.y);
                                 return;
                             }
                         }
-
-                        if (Game.Mode == "fnv")
+                        else if (Game.Mode == "fo4")
                         {
-                            if (level == 1)
+                            this.CreateLODNodesFO4(file, rootNiNode, quad, shapes);
+                            if (verbose)
                             {
-                                file.Write(this.outputDir + (object)"\\" + this.worldspaceName + ".Level4.X" + quad.x.ToString() + ".Y" + quad.y.ToString() + ".nif", logFile);
+                                this.logFile.WriteLog("Finished LOD level " + this.quadLevel.ToString() + " coord [" + quad.x.ToString() + ", " + quad.y.ToString() + "] [" + quad.outValues.totalTriCount.ToString() + "/" + quad.outValues.reducedTriCount.ToString() + "]");
                             }
-                            else
+                            if ((int)rootNiNode.GetNumChildren() == 0)
                             {
-                                file.Write(this.outputDir + (object)"\\" + this.worldspaceName + ".Level4.High.X" + quad.x.ToString() + ".Y" + quad.y.ToString() + ".nif", logFile);
+                                return;
+                            }
+                        }
+                        else if (Game.Mode == "merge5")
+                        {
+                            this.CreateMergeNodes(file, rootNiNode, quad, shapes);
+                            if ((int)rootNiNode.GetNumChildren() == 0)
+                            {
+                                return;
+                            }
+                        }
+                        else if (Game.Mode == "merge4")
+                        {
+                            this.CreateMerge4Nodes(file, rootNiNode, quad, shapes);
+                            if ((int)rootNiNode.GetNumChildren() == 0)
+                            {
+                                return;
                             }
                         }
                         else
                         {
-                            file.Write(this.outputDir + (object)"\\" + this.worldspaceName + "." + this.quadLevel.ToString() + "." + quad.x.ToString() + "." + quad.y.ToString() + ".bto", logFile);
+                            this.CreateLODNodes(file, rootNiNode, quad, shapes);
+                            if (verbose)
+                            {
+                                this.logFile.WriteLog("Finished LOD level " + this.quadLevel.ToString() + " coord [" + quad.x.ToString() + ", " + quad.y.ToString() + "] [" + quad.outValues.totalTriCount.ToString() + "/" + quad.outValues.reducedTriCount.ToString() + "]");
+                            }
+                            if ((int)rootNiNode.GetNumChildren() == 0)
+                            {
+                                //return;
+                            }
                         }
-                        this.logFile.WriteLog("Finished LOD level " + (object)this.quadLevel.ToString() + " coord [" + quad.x.ToString() + ", " + quad.y.ToString() + "] [" + quad.outValues.totalTriCount.ToString() + "/" + quad.outValues.reducedTriCount.ToString() + "]");
+                        file.Write(fileName, logFile);
+                        if (!verbose)
+                        {
+                            this.logFile.WriteLog("Finished LOD level " + (object)this.quadLevel.ToString() + " coord [" + quad.x.ToString() + ", " + quad.y.ToString() + "] [" + quad.outValues.totalTriCount.ToString() + "/" + quad.outValues.reducedTriCount.ToString() + "]");
+                        }
                     })));
                     list2[list2.Count - 1].Start((object)quadDesc);
                 }
@@ -2080,7 +2329,7 @@ namespace LODGenerator
             file.AddBlock((NiObject)rootNode);
             this.quadLevel = 4;
             this.quadOffset = 16384f;
-            QuadDesc quad = new QuadDesc();
+            QuadDesc quad = new QuadDesc(true);
             quad.x = 0;
             quad.y = 0;
             quad.statics = new List<StaticDesc>();
@@ -2100,15 +2349,15 @@ namespace LODGenerator
             curStat.staticModels[1] = strfile;
             curStat.staticModels[2] = strfile;
             quad.statics.Add(curStat);
-            List<ShapeDesc> shapes = this.ParseNif(quad, curStat, 0, file, rootNode);
-            this.MergeNodes(shapes);
+            List<ShapeDesc> shapes = this.ParseNif(quad, curStat, 0);
+            this.MergeShapes(shapes);
             for (int index = 0; index < shapes.Count; ++index)
             {
-                BSSegmentedTriShape segmentedTriShape = new BSSegmentedTriShape((NiGeometry)shapes[index].shape);
+                BSSegmentedTriShape segmentedTriShape = new BSSegmentedTriShape();
                 segmentedTriShape.SetRotation(new Matrix33(true));
                 segmentedTriShape.SetTranslation(new Vector3(0.0f, 0.0f, 0.0f));
                 rootNode.AddChild(file.AddBlock((NiObject)segmentedTriShape));
-                segmentedTriShape.SetData(file.AddBlock((NiObject)shapes[index].data));
+                //segmentedTriShape.SetData(file.AddBlock((NiObject)shapes[index].geometry));
             }
             file.Write(this.outputDir + "\\" + this.worldspaceName + ".test.nif", logFile);
         }

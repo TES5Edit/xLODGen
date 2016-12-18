@@ -17,15 +17,15 @@ namespace LODGenerator.NifMain
             this.numTriangles = reader.ReadUInt16();
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.numTriangles);
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return base.GetSize() + 2U;
+            return base.GetSize(header) + 2U;
         }
 
         public override string GetClassName()

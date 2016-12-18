@@ -195,5 +195,10 @@ namespace LODGenerator.Common
             matrix44[2][2] = this.m3[2];
             return matrix44;
         }
+
+        public override string ToString()
+        {
+            return "[" + this.m1[0] + ", " + this.m1[1] + ", " + this.m1[2] + ", " + this.m1[3] + "] [" + this.m2[0] + ", " + this.m2[1] + ", " + this.m2[2] + ", " + this.m2[3] + "] [" + this.m3[0] + ", " + this.m3[1] + ", " + this.m3[2] + ", " + this.m3[3] + "] [" + this.m4[0] + ", " + this.m4[1] + ", " + this.m4[2] + ", " + this.m4[3] + "]";
+        }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using LODGenerator.Common;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace LODGenerator.NifMain
@@ -15,16 +16,31 @@ namespace LODGenerator.NifMain
         protected int textureSet;
         protected Color3 emissiveColor;
         protected float emissiveMultiple;
+        protected int wetMaterialIdx;
+        protected string wetMaterialName;
         protected uint textureClampMode;
         protected float alpha;
-        protected float unknownFloat2;
+        protected float refractionStrength;
         protected float glossiness;
         protected Color3 specularColor;
         protected float specularStrength;
         protected float lightingEffect1;
         protected float lightingEffect2;
+        protected float subsurfaceRolloff;
+        protected float unkownFloat1;
+        protected float backlightPower;
+        protected float grayscaleToPaletteScale;
+        protected float fresnelPower;
+        protected float wetnessSpecScale;
+        protected float wetnessSpecPower;
+        protected float wetnessMinVar;
+        protected float wetnessEnvMapScale;
+        protected float wetnessFresnelPower;
+        protected float wetnessMetalness;
         protected float environmentMapScale;
+        protected ushort unkownEnvMapInt;
         protected Color3 skinTintColor;
+        protected uint unkownSkinTintInt;
         protected Color3 hairTintColor;
         protected float maxPasses;
         protected float scale;
@@ -47,20 +63,33 @@ namespace LODGenerator.NifMain
             this.textureSet = -1;
             this.emissiveColor = new Color3(0.0f, 0.0f, 0.0f);
             this.emissiveMultiple = 1f;
+            this.wetMaterialIdx = -1;
+            this.wetMaterialName = "";
             this.textureClampMode = 3U;
             this.alpha = 1f;
-            this.unknownFloat2 = 0.0f;
+            this.refractionStrength = 0.0f;
             this.glossiness = 80f;
             this.specularColor = new Color3(1f, 1f, 1f);
             this.specularStrength = 1f;
             this.lightingEffect1 = 0.3f;
             this.lightingEffect2 = 2f;
+            this.subsurfaceRolloff = 0.0f;
+            this.unkownFloat1 = float.MaxValue;
+            this.backlightPower = 0.0f;
+            this.grayscaleToPaletteScale = 1.0f; ;
+            this.fresnelPower = 5.0f;
+            this.wetnessSpecScale = -1.0f;
+            this.wetnessSpecPower = -1.0f;
+            this.wetnessMinVar = -1.0f;
+            this.wetnessEnvMapScale = -1.0f;
+            this.wetnessFresnelPower = -1.0f;
+            this.wetnessMetalness = -1.0f;
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
             writer.Write(this.shaderType);
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.shaderFlags1);
             writer.Write(this.shaderFlags2);
             Utils.WriteUVCoord(writer, this.uvOffset);
@@ -68,20 +97,47 @@ namespace LODGenerator.NifMain
             writer.Write(this.textureSet);
             Utils.WriteColor3(writer, this.emissiveColor);
             writer.Write(this.emissiveMultiple);
+            if (header.GetVersion() == 335675399U && header.GetUserVersion2() == 130)
+            {
+                writer.Write(this.wetMaterialIdx);
+            }
             writer.Write(this.textureClampMode);
             writer.Write(this.alpha);
-            writer.Write(this.unknownFloat2);
+            writer.Write(this.refractionStrength);
             writer.Write(this.glossiness);
             Utils.WriteColor3(writer, this.specularColor);
             writer.Write(this.specularStrength);
-            writer.Write(this.lightingEffect1);
-            writer.Write(this.lightingEffect2);
+            if (header.GetVersion() == 335675399U && header.GetUserVersion2() == 130)
+            {
+                writer.Write(this.subsurfaceRolloff);
+                writer.Write(this.unkownFloat1);
+                writer.Write(this.backlightPower);
+                writer.Write(this.grayscaleToPaletteScale);
+                writer.Write(this.fresnelPower);
+                writer.Write(this.wetnessSpecScale);
+                writer.Write(this.wetnessSpecPower);
+                writer.Write(this.wetnessMinVar);
+                writer.Write(this.wetnessEnvMapScale);
+                writer.Write(this.wetnessFresnelPower);
+                writer.Write(this.wetnessMetalness);
+            }
+            else
+            {
+                writer.Write(this.lightingEffect1);
+                writer.Write(this.lightingEffect2);
+            }
             if ((int)this.shaderType == 1)
+            {
                 writer.Write(this.environmentMapScale);
+            }
             else if ((int)this.shaderType == 5)
+            {
                 Utils.WriteColor3(writer, this.skinTintColor);
+            }
             else if ((int)this.shaderType == 6)
+            {
                 Utils.WriteColor3(writer, this.hairTintColor);
+            }
             else if ((int)this.shaderType == 7)
             {
                 writer.Write(this.maxPasses);
@@ -101,7 +157,9 @@ namespace LODGenerator.NifMain
             else
             {
                 if ((int)this.shaderType != 16)
+                {
                     return;
+                }
                 writer.Write(this.eyeCubemapScale);
                 Utils.WriteVector3(writer, this.leftEyeReflectionCenter);
                 Utils.WriteVector3(writer, this.rightEyeReflectionCenter);
@@ -119,20 +177,59 @@ namespace LODGenerator.NifMain
             this.textureSet = reader.ReadInt32();
             this.emissiveColor = Utils.ReadColor3(reader);
             this.emissiveMultiple = reader.ReadSingle();
+            if (header.GetVersion() == 335675399U && header.GetUserVersion2() == 130)
+            {
+                this.wetMaterialIdx = reader.ReadInt32();
+                if (this.wetMaterialIdx != -1)
+                {
+                    this.wetMaterialName = header.GetString((uint)this.wetMaterialIdx);
+                }
+            }
             this.textureClampMode = reader.ReadUInt32();
             this.alpha = reader.ReadSingle();
-            this.unknownFloat2 = reader.ReadSingle();
+            this.refractionStrength = reader.ReadSingle();
             this.glossiness = reader.ReadSingle();
             this.specularColor = Utils.ReadColor3(reader);
             this.specularStrength = reader.ReadSingle();
-            this.lightingEffect1 = reader.ReadSingle();
-            this.lightingEffect2 = reader.ReadSingle();
+            if (header.GetVersion() == 335675399U && header.GetUserVersion2() == 130)
+            {
+                this.subsurfaceRolloff = reader.ReadSingle();
+                this.unkownFloat1 = reader.ReadSingle();
+                this.backlightPower = reader.ReadSingle();
+                this.grayscaleToPaletteScale = reader.ReadSingle();
+                this.fresnelPower = reader.ReadSingle();
+                this.wetnessSpecScale = reader.ReadSingle();
+                this.wetnessSpecPower = reader.ReadSingle();
+                this.wetnessMinVar = reader.ReadSingle();
+                this.wetnessEnvMapScale = reader.ReadSingle();
+                this.wetnessFresnelPower = reader.ReadSingle();
+                this.wetnessMetalness = reader.ReadSingle();
+            }
+            else
+            {
+                this.lightingEffect1 = reader.ReadSingle();
+                this.lightingEffect2 = reader.ReadSingle();
+            }
             if ((int)this.shaderType == 1)
+            {
                 this.environmentMapScale = reader.ReadSingle();
+                if (header.GetVersion() == 335675399U && header.GetUserVersion2() == 130)
+                {
+                    this.unkownEnvMapInt = reader.ReadUInt16();
+                }
+            }
             else if ((int)this.shaderType == 5)
+            {
                 this.skinTintColor = Utils.ReadColor3(reader);
+                if (header.GetVersion() == 335675399U && header.GetUserVersion2() == 130)
+                {
+                    this.unkownSkinTintInt = reader.ReadUInt32();
+                }
+            }
             else if ((int)this.shaderType == 6)
+            {
                 this.hairTintColor = Utils.ReadColor3(reader);
+            }
             else if ((int)this.shaderType == 7)
             {
                 this.maxPasses = reader.ReadSingle();
@@ -152,16 +249,22 @@ namespace LODGenerator.NifMain
             else
             {
                 if ((int)this.shaderType != 16)
+                {
                     return;
+                }
                 this.eyeCubemapScale = reader.ReadSingle();
                 this.leftEyeReflectionCenter = Utils.ReadVector3(reader);
                 this.rightEyeReflectionCenter = Utils.ReadVector3(reader);
             }
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            uint num = base.GetSize() + 88U;
+            uint num = base.GetSize(header) + 88U;
+            if (header.GetVersion() == 335675399U && header.GetUserVersion2() == 130)
+            {
+                num += 40U;
+            }
             if ((int)this.shaderType == 1)
                 num += 4U;
             else if ((int)this.shaderType == 5)
@@ -264,6 +367,11 @@ namespace LODGenerator.NifMain
             this.emissiveMultiple = value;
         }
 
+        public void SetWetMaterialIndex(int value)
+        {
+            this.wetMaterialIdx = value;
+        }
+
         public uint GetTextureClampMode()
         {
             return this.textureClampMode;
@@ -286,12 +394,12 @@ namespace LODGenerator.NifMain
 
         public float GetUnknownFloat2()
         {
-            return this.unknownFloat2;
+            return this.refractionStrength;
         }
 
         public void SetUnknownFloat2(float value)
         {
-            this.unknownFloat2 = value;
+            this.refractionStrength = value;
         }
 
         public float GetGlossiness()
@@ -342,6 +450,16 @@ namespace LODGenerator.NifMain
         public void SetLightingEffect2(float value)
         {
             this.lightingEffect2 = value;
+        }
+
+        public void SetBacklightPower(float value)
+        {
+            this.backlightPower = value;
+        }
+
+        public float GetBacklightPower()
+        {
+            return this.backlightPower;
         }
 
         public override bool IsDerivedType(string type)

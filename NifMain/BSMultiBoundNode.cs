@@ -1,4 +1,5 @@
 ﻿using LODGenerator.Common;
+using System;
 using System.IO;
 
 namespace LODGenerator.NifMain
@@ -24,25 +25,25 @@ namespace LODGenerator.NifMain
             }
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.multiBound);
-            if (Game.Mode != "fnv")
+            if (header.GetUserVersion() >= 12)
             {
                 writer.Write(this.cullMode);
             }
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            if (Game.Mode == "fnv")
+            if (header.GetUserVersion() >= 12)
             {
-                return base.GetSize() + 4U;
+                return base.GetSize(header) + 8U;
             }
             else
             {
-                return base.GetSize() + 8U;
+                return base.GetSize(header) + 4U;
             }
         }
 

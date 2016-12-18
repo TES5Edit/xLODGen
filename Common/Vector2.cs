@@ -60,6 +60,14 @@ namespace LODGenerator.Common
             return new Vector2(a[0] - b[0], a[1] - b[1]);
         }
 
+        public static Vector2 Cross(Vector2 A, Vector2 B)
+        {
+            Vector2 vector2 = new Vector2();
+            vector2[0] = A[1] * B[2] - A[2] * B[1];
+            vector2[1] = A[2] * B[0] - A[0] * B[2];
+            return vector2;
+        }
+
         public static float Dot(Vector2 A, Vector2 B)
         {
             return (float)((double)A[0] * (double)B[0] + (double)A[1] * (double)B[1]);

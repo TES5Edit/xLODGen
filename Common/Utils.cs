@@ -6,6 +6,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.Serialization;
 using System.Security.Cryptography;
 using System.Text;
+using DelaunayTriangulator;
 
 namespace LODGenerator.Common
 {
@@ -13,7 +14,9 @@ namespace LODGenerator.Common
     {
         static string _mode;
         static float _sampleSize;
-        
+        static float _atlastoleranceMin;
+        static float _atlastoleranceMax;
+
         public static string Mode
         {
             get
@@ -38,17 +41,112 @@ namespace LODGenerator.Common
             }
         }
 
+        public static float atlasToleranceMin
+        {
+            get
+            {
+                return _atlastoleranceMin;
+            }
+            set
+            {
+                _atlastoleranceMin = value;
+            }
+        }
+
+        public static float atlasToleranceMax
+        {
+            get
+            {
+                return _atlastoleranceMax;
+            }
+            set
+            {
+                _atlastoleranceMax = value;
+            }
+        }
     }
 
     public static class Utils
     {
+        public static float ByteToFloat(byte b)
+        {
+            return (float)b / 255 * 2 - 1;
+        }
+
+        public static byte FloatToByte(float f)
+        {
+            return (byte)Math.Round((f + 1) / 2 * 255, MidpointRounding.AwayFromZero);
+        }
+
+        public static byte FloatToUByte(float f)
+        {
+            double f2 = Math.Max(0.0, Math.Min(1.0, f));
+            return (byte)Math.Floor(f2 == 1.0 ? 255 : f2 * 256.0);
+        }
+
+        public static float ShortToFloat(short value)
+        {
+            int mant = value & 0x03ff;
+            int exp = value & 0x7c00;
+            if (exp == 0x7c00)
+            {
+                exp = 0x3fc00;
+            }
+            else if (exp != 0)
+            {
+                exp += 0x1c000;
+            }
+            else if (mant != 0)
+            {
+                exp = 0x1c400; 
+                do
+                {
+                    mant <<= 1;
+                    exp -= 0x400;
+                } while ((mant & 0x400) == 0);
+                mant &= 0x3ff;
+            }
+            return BitConverter.ToSingle(BitConverter.GetBytes((value & 0x8000) << 16 | (exp | mant) << 13), 0);
+        }
+
+        public static short FloatToShort(float fval)
+        {
+            int fbits = BitConverter.ToInt32(BitConverter.GetBytes(fval), 0);
+            int sign = fbits >> 16 & 0x8000;
+            int val = (fbits & 0x7fffffff) + 0x1000;
+
+            if (val >= 0x47800000)
+            {
+                if ((fbits & 0x7fffffff) >= 0x47800000)
+                {
+                    if (val < 0x7f800000)
+                    {
+                        return (short)(sign | 0x7c00);
+                    }
+                    return (short)(sign | 0x7c00 | (fbits & 0x007fffff) >> 13);
+                }
+                return (short)(sign | 0x7bff);
+            }
+            if (val >= 0x38800000)
+            {
+                return (short)(sign | val - 0x38000000 >> 13);
+            }
+            if (val < 0x33000000)
+            {
+                return (short)sign;
+            }
+            val = (fbits & 0x7fffffff) >> 23;
+            return (short)(sign | ((fbits & 0x7fffff | 0x800000) + (0x800000 >> val - 102) >> 126 - val));
+        }
 
         public static string ReadShortString(BinaryReader NifReader)
         {
             byte num = NifReader.ReadByte();
             string str = "";
             for (int index = 0; index < (int)num; ++index)
+            {
                 str = str + (object)(char)NifReader.ReadByte();
+            }
             return str;
         }
 
@@ -56,7 +154,19 @@ namespace LODGenerator.Common
         {
             writer.Write((byte)value.Length);
             for (int index = 0; index < value.Length; ++index)
+            {
                 writer.Write((byte)Enumerable.ElementAt<char>((IEnumerable<char>)value, index));
+            }
+        }
+
+        public static void WriteHeaderString(BinaryWriter writer, string value)
+        {
+            writer.Write((byte)(value.Length + 1));
+            for (int index = 0; index < value.Length; ++index)
+            {
+                writer.Write((byte)Enumerable.ElementAt<char>((IEnumerable<char>)value, index));
+            }
+            writer.Write((byte)0);
         }
 
         public static string ReadSizedString(BinaryReader NifReader)
@@ -64,7 +174,9 @@ namespace LODGenerator.Common
             uint num = NifReader.ReadUInt32();
             string str = "";
             for (int index = 0; (long)index < (long)num; ++index)
+            {
                 str = str + (object)(char)NifReader.ReadByte();
+            }
             return str;
         }
 
@@ -73,16 +185,22 @@ namespace LODGenerator.Common
             StringIdx = -1;
             StringValue = (string)null;
             if (version > 335544325U)
+            {
                 StringIdx = NifReader.ReadInt32();
+            }
             else
+            {
                 StringValue = Utils.ReadSizedString(NifReader);
+            }
         }
 
         public static void WriteSizedString(BinaryWriter writer, string value)
         {
             writer.Write((uint)value.Length);
             for (int index = 0; index < value.Length; ++index)
+            {
                 writer.Write((byte)Enumerable.ElementAt<char>((IEnumerable<char>)value, index));
+            }
         }
 
         public static Vector3 ReadVector3(BinaryReader NifReader)
@@ -201,9 +319,49 @@ namespace LODGenerator.Common
             return texDesc;
         }
 
+        public static void WriteTexDesc(BinaryWriter writer, TexDesc texDesc)
+        {
+            writer.Write(texDesc.source);
+            writer.Write(texDesc.clampMode);
+            writer.Write(texDesc.filterMode);
+            writer.Write(texDesc.uvSet);
+            Utils.WriteBool(writer, texDesc.hasTextureTransform);
+            if (texDesc.hasTextureTransform)
+            {
+                Utils.WriteUVCoord(writer, texDesc.translation);
+                Utils.WriteUVCoord(writer, texDesc.tiling);
+                writer.Write(texDesc.wRotation);
+                writer.Write(texDesc.transformType);
+                Utils.WriteUVCoord(writer, texDesc.centerOffset);
+            }
+        }
+
         public static float ToRadians(float val)
         {
-            return (float)((double)val * 3.14159274101257 / 180.0);
+            return (float)(val * Math.PI / 180.0);
+        }
+
+        public static bool PointInTriangle(UVCoord p, UVCoord t1, UVCoord t2, UVCoord t3, out float u, out float v)
+        {
+            UVCoord vector2_1 = t3 - t1;
+            UVCoord vector2_2 = t2 - t1;
+            UVCoord B = p - t1;
+            float num1 = UVCoord.Dot(vector2_1, vector2_1);
+            float num2 = UVCoord.Dot(vector2_1, vector2_2);
+            float num3 = UVCoord.Dot(vector2_1, B);
+            float num4 = UVCoord.Dot(vector2_2, vector2_2);
+            float num5 = UVCoord.Dot(vector2_2, B);
+            float num6 = (float)(1.0 / ((double)num1 * (double)num4 - (double)num2 * (double)num2));
+            u = (float)((double)num4 * (double)num3 - (double)num2 * (double)num5) * num6;
+            v = (float)((double)num1 * (double)num5 - (double)num2 * (double)num3) * num6;
+            if ((double)u >= 0.0 && (double)v >= 0.0)
+            {
+                return (double)u + (double)v <= 1;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public static bool PointInTriangle(Vector2 p, Vector2 t1, Vector2 t2, Vector2 t3, out float u, out float v)
@@ -220,9 +378,78 @@ namespace LODGenerator.Common
             u = (float)((double)num4 * (double)num3 - (double)num2 * (double)num5) * num6;
             v = (float)((double)num1 * (double)num5 - (double)num2 * (double)num3) * num6;
             if ((double)u >= 0.0 && (double)v >= 0.0)
+            {
                 return (double)u + (double)v <= 1.0;
+            }
             else
+            {
                 return false;
+            }
+        }
+
+        //                    Math.Round(1.1, 0)
+
+        public static float xQUV(float value)
+        {
+            if (value < 0)
+            {
+                return (float)Math.Ceiling(value * 100) / 100;
+            }
+            else
+            {
+                return (float)Math.Floor(value * 100) / 100;
+            }
+        }
+
+        public static Int64 QUV(float value)
+        {
+            if (value < 0)
+            {
+                return (Int64)Math.Ceiling(value * 8192);
+            }
+            else
+            {
+                return (Int64)Math.Floor(value * 8192);
+            }
+        }
+
+        public static Int64 QHigh(float value)
+        {
+            if (value < 0)
+            {
+                return (Int64)Math.Ceiling(value * 100); // + 0.5) / 1000;
+            }
+            else
+            {
+                return (Int64)Math.Floor(value * 100); // + 0.5) / 1000;
+            }
+        }
+
+        public static Int64 QLow(double value)
+        {
+            if (value < 0)
+            {
+                return (Int64)Math.Ceiling(value * 10); // + 0.5) / 1000;
+            }
+            else
+            {
+                return (Int64)Math.Floor(value * 10); // + 0.5) / 1000;
+            }
+        }
+
+        public static string GetDiffuseTextureName(string value)
+        {
+            return value.Replace("_d.dds", ".dds");
+        }
+
+        public static string GetNormalTextureName(string value)
+        {
+            return Utils.GetDiffuseTextureName(value).Replace(".dds", "_n.dds");
+        }
+
+        public static string GetSpecularTextureName(string value)
+        {
+            return Utils.GetDiffuseTextureName(value).Replace(".dds", "_s.dds");
         }
 
         public static FileStream GetFileStream(FileInfo file, LogFile logFile)
@@ -253,7 +480,7 @@ namespace LODGenerator.Common
 
         public static string GetHash(byte[] objectAsBytes)
         {
-            MD5 md5 = new MD5CryptoServiceProvider();
+            SHA512CryptoServiceProvider md5 = new SHA512CryptoServiceProvider();
             try
             {
                 byte[] result = md5.ComputeHash(objectAsBytes);

@@ -48,5 +48,10 @@ namespace LODGenerator.Common
             this.g = _g;
             this.b = _b;
         }
+
+        public override string ToString()
+        {
+            return "[" + this.r + ", " + this.g + ", " + this.b + "]";
+        }
     }
 }

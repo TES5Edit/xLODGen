@@ -10,7 +10,7 @@ namespace LODGenerator.NifMain
         {
         }
 
-        public virtual void Write(BinaryWriter writer)
+        public virtual void Write(NiHeader header, BinaryWriter writer)
         {
         }
 
@@ -19,7 +19,7 @@ namespace LODGenerator.NifMain
             return "NiObject";
         }
 
-        public virtual uint GetSize()
+        public virtual uint GetSize(NiHeader header)
         {
             return 0U;
         }

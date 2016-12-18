@@ -23,9 +23,9 @@ namespace LODGenerator.NifMain
                 this.stringData = Utils.ReadSizedString(reader);
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return base.GetSize() + 4U;
+            return base.GetSize(header) + 4U;
         }
 
         public override string GetClassName()

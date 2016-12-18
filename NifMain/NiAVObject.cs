@@ -18,16 +18,8 @@ namespace LODGenerator.NifMain
 
         public NiAVObject()
         {
-            if (Game.Mode == "fnv")
-            {
-                this.flags = (ushort)2062;
-                this.flags2 = (ushort)8;
-            }
-            else
-            {
-                this.flags = (ushort)14;
-                this.flags2 = (ushort)0;
-            }
+            this.flags = (ushort)14;
+            this.flags2 = (ushort)0;
             this.translation = new Vector3(0.0f, 0.0f, 0.0f);
             this.rotation = new Matrix33(true);
             this.scale = 1f;
@@ -41,7 +33,9 @@ namespace LODGenerator.NifMain
             base.Read(header, reader);
             this.flags = reader.ReadUInt16();
             if ((header.GetUserVersion() >= 11U) && (header.GetUserVersion2() >= 26U))
+            {
                 this.flags2 = reader.ReadUInt16();
+            }
             this.translation = Utils.ReadVector3(reader);
             this.rotation = Utils.ReadMatrix33(reader);
             this.scale = reader.ReadSingle();
@@ -49,42 +43,47 @@ namespace LODGenerator.NifMain
             {
                 this.numProperties = reader.ReadUInt32();
                 for (int index = 0; (long)index < (long)this.numProperties; ++index)
+                {
                     this.properties.Add(reader.ReadInt32());
-            }
-            else
-            {
+                }
             }
             this.collisionObject = reader.ReadInt32();
-
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.flags);
-            writer.Write(this.flags2);
+            if ((header.GetUserVersion() >= 11U) && (header.GetUserVersion2() >= 26U))
+            {
+                writer.Write(this.flags2);
+            }
             Utils.WriteVector3(writer, this.translation);
             Utils.WriteMatrix33(writer, this.rotation);
             writer.Write(this.scale);
-            if (Game.Mode == "fnv")
+            if ((header.GetVersion() <= 335544325U) || (header.GetUserVersion() <= 11U))
             {
                 writer.Write((uint)this.properties.Count);
                 for (int index = 0; (long)index < this.properties.Count; ++index)
+                {
                     writer.Write(this.properties[index]);
+                }
             }
             writer.Write(this.collisionObject);
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            if (Game.Mode == "fnv")
+            uint size = base.GetSize(header) + 58U;
+            if ((header.GetUserVersion() >= 11U) && (header.GetUserVersion2() >= 26U))
             {
-                return base.GetSize() + 60U + 4 + 4 * (uint) this.properties.Count;
+                size += 2;
             }
-            else
+            if ((header.GetVersion() <= 335544325U) || (header.GetUserVersion() <= 11U))
             {
-                return base.GetSize() + 60U;
+                size += 4 + 4 * (uint) this.properties.Count;
             }
+            return size;
         }
 
         public override string GetClassName()

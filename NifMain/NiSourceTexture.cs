@@ -1,8 +1,10 @@
 ﻿using LODGenerator.Common;
+using System;
 using System.IO;
 
 namespace LODGenerator.NifMain
 {
+    [Serializable]
     public class NiSourceTexture : NiTexture
     {
         protected byte useExternal;
@@ -49,14 +51,41 @@ namespace LODGenerator.NifMain
             this.directRender = Utils.ReadBool(reader);
         }
 
-        public override uint GetSize()
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            return base.GetSize();
+            base.Write(header, writer);
+            writer.Write(this.useExternal);
+            if ((int)this.useExternal == 1)
+            {
+                Utils.WriteSizedString(writer, this.fileName);
+                writer.Write(this.unknownLink);
+            }
+            else
+            {
+                Utils.WriteSizedString(writer, this.fileName);
+                writer.Write(this.pixelData);
+            }
+            writer.Write(this.pixelLayout);
+            writer.Write(this.useMipMaps);
+            writer.Write(this.alphaFormat);
+            writer.Write(this.isStatic);
+            Utils.WriteBool(writer, this.directRender);
+        }
+
+        public override uint GetSize(NiHeader header)
+        {
+            //todo 
+            return base.GetSize(header);
         }
 
         public string GetFileName()
         {
             return this.fileName;
+        }
+
+        public void SetFileName(string value)
+        {
+            this.fileName = value;
         }
 
         public override string GetClassName()

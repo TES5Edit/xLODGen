@@ -38,6 +38,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -48,6 +49,18 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release64|AnyCPU'">
+    <AssemblyName>LODGen64</AssemblyName>
+    <OutputPath>bin\Release64\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -55,10 +68,31 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AltTextureDesc.cs" />
+    <Compile Include="BGSMFile.cs" />
+    <Compile Include="Common\BSVertexData.cs" />
+    <Compile Include="DelaunayTriangulator\Hull.cs" />
+    <Compile Include="DelaunayTriangulator\Set.cs" />
+    <Compile Include="DelaunayTriangulator\Triad.cs" />
+    <Compile Include="DelaunayTriangulator\Triangulator.cs" />
+    <Compile Include="DelaunayTriangulator\Vertex.cs" />
+    <Compile Include="FlatDesc.cs" />
     <Compile Include="AtlasDesc.cs" />
     <Compile Include="Common\BSA.cs" />
     <Compile Include="Common\Ini.cs" />
+    <Compile Include="Geometry.cs" />
+    <Compile Include="NifMain\BSMeshLODTriShape.cs" />
+    <Compile Include="NifMain\BSSITSSegment.cs" />
+    <Compile Include="NifMain\BSSubIndexTriShape.cs" />
+    <Compile Include="NifMain\BSTreeNode.cs" />
+    <Compile Include="NifMain\BSTriShape.cs" />
     <Compile Include="NifMain\BSShaderPPLightingProperty.cs" />
+    <Compile Include="NifMain\NiBillboardNode.cs" />
+    <Compile Include="NifMain\NiSwitchNode.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
@@ -126,7 +160,7 @@
     <Compile Include="Common\Triangle.cs" />
     <Compile Include="Common\CmdArgs.cs" />
     <Compile Include="Common\Utils.cs" />
-    <Compile Include="Common\UVCoord.cs" />
+    <Compile Include="NifMain\UVCoord.cs" />
     <Compile Include="Common\Vector2.cs" />
     <Compile Include="Common\Vector3.cs" />
     <Compile Include="Common\Vector4.cs" />
@@ -203,6 +237,12 @@
       <ProductName>Windows Installer 4.5</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -17,6 +17,7 @@ namespace LODGenerator.NifMain
         public NiObjectNET()
         {
             this.nameIdx = -1;
+            this.name = "";
             this.numExtraData = 0U;
             this.extraData = new List<int>();
             this.controller = -1;
@@ -33,25 +34,46 @@ namespace LODGenerator.NifMain
             this.controller = reader.ReadInt32();
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
-            writer.Write(this.nameIdx);
-            writer.Write(0U);
-            writer.Write(-1);
-            if (this.numExtraData != 0U)
+            base.Write(header, writer);
+            if (header.GetVersion() <= 335544325U)
             {
-                Console.WriteLine("There is a controller here!?");
+                if (this.name != "")
+                {
+                    Utils.WriteSizedString(writer, this.name);
+                }
+                else if (this.nameIdx == -1)
+                {
+                    Utils.WriteSizedString(writer, "Scene Root");
+                }
+                else
+                {
+                    Utils.WriteSizedString(writer, header.GetString((uint)this.nameIdx));
+                }
             }
-            //writer.Write(this.numExtraData);
-            //for (int index = 0; (long)index < (long)this.numExtraData; ++index)
-            //    writer.Write(this.extraData[index]);
-            //writer.Write(this.controller);
+            else
+            {
+                writer.Write(this.nameIdx);
+            }
+            writer.Write(this.extraData.Count);
+            if (this.extraData.Count > 0)
+            {
+                for (int index = 0; index < this.extraData.Count; index++)
+                {
+                    writer.Write(this.extraData[index]);
+                }
+            }
+            writer.Write(-1);
+            if (this.controller != -1)
+            {
+                //Console.WriteLine("Not writing controller " + this.name);
+            }
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return (uint)((int)base.GetSize() + 12 + 4 * (int)this.numExtraData);
+            return (uint)((int)base.GetSize(header) + 12 + 4 * (int)this.numExtraData);
         }
 
         public override string GetClassName()
@@ -77,6 +99,12 @@ namespace LODGenerator.NifMain
         public uint GetNumExtraData()
         {
             return this.numExtraData;
+        }
+
+        public void SetExtraData(List<int> value)
+        {
+            this.extraData = value;
+            this.numExtraData = (uint)this.extraData.Count;
         }
 
         public List<int> GetExtraData()

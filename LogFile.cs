@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LODGenerator.Common;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -17,7 +18,8 @@ namespace LODGenerator
             this.keepRunning = true;
             try
             {
-                this.logWriter = new StreamWriter(Directory.GetCurrentDirectory() + "\\LODGen_log.txt", true);
+                bool append = true;
+                this.logWriter = new StreamWriter(Directory.GetCurrentDirectory() + "\\LODGen_log.txt", append);
             }
             catch
             {
@@ -25,7 +27,7 @@ namespace LODGenerator
                 System.Environment.Exit(403);
             }
             this.logWriter.WriteLine(this.WriteToScreen("============================================================"));
-            this.logWriter.WriteLine(this.WriteToScreen("Skyrim Object LOD Generator v0.9"));
+            this.logWriter.WriteLine(this.WriteToScreen("Skyrim Object LOD Generator v1.0.0"));
             this.logWriter.WriteLine(this.WriteToScreen("Created by Ehamloptiran and Zilav"));
             this.logWriter.WriteLine(this.WriteToScreen("Updated by Sheson\n"));
             this.logWriter.WriteLine(this.WriteToScreen("Log started at " + DateTime.Now.ToShortTimeString()));

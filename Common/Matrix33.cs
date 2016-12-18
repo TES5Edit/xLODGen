@@ -138,7 +138,7 @@ namespace LODGenerator.Common
 
         public override string ToString()
         {
-            return "[" + (object)this.m1[0] + ", " + (string)(object)this.m1[1] + ", " + (string)(object)this.m1[2] + "] [" + (string)(object)this.m2[0] + ", " + (string)(object)this.m2[1] + ", " + (string)(object)this.m2[2] + "] [" + (string)(object)this.m3[0] + ", " + (string)(object)this.m3[1] + ", " + (string)(object)this.m3[2] + "]";
+            return "[" + this.m1[0] + ", " + this.m1[1] + ", " + this.m1[2] + "] [" + this.m2[0] + ", " + this.m2[1] + ", " + this.m2[2] + "] [" + this.m3[0] + ", " + this.m3[1] + ", " + this.m3[2] + "]";
         }
     }
 }

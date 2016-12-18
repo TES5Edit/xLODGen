@@ -20,16 +20,31 @@ namespace LODGenerator.NifMain
             this.threshold = reader.ReadByte();
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.flags);
             writer.Write(this.threshold);
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return base.GetSize() + 3U;
+            return base.GetSize(header) + 3U;
+        }
+
+        public void SetFlags(ushort value)
+        {
+            this.flags = value;
+        }
+
+        public void SetThreshold(byte value)
+        {
+            this.threshold = value;
+        }
+
+        public byte GetThreshold()
+        {
+            return this.threshold;
         }
 
         public override string GetClassName()

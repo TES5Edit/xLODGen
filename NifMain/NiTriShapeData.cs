@@ -28,7 +28,8 @@ namespace LODGenerator.NifMain
             this.numVertices = data.GetNumVertices();
             this.hasVertices = data.HasVertices();
             this.vertices = data.GetVertices();
-            this.bsNumUVSets = data.GetBSNumUVSets();
+            this.numUVSets = data.GetNumUVSets();
+            this.extraVectorFlags = data.GetExtraVertexFlag();
             this.skyrimMaterial = data.GetSkyrimMaterial();
             this.hasNormals = data.HasNormals();
             this.normals = data.GetNormals();
@@ -94,35 +95,43 @@ namespace LODGenerator.NifMain
                 matchGroup.numVertices = reader.ReadUInt16();
                 matchGroup.vertexIndices = new List<ushort>();
                 for (int index2 = 0; index2 < (int)matchGroup.numVertices; ++index2)
+                {
                     matchGroup.vertexIndices.Add(reader.ReadUInt16());
+                }
                 this.matchGroups.Add(matchGroup);
             }
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.numTrianglePoints);
             Utils.WriteBool(writer, this.hasTriangles);
             if (this.hasTriangles)
             {
                 for (int index = 0; index < this.triangles.Count; ++index)
+                {
                     Utils.WriteTriangle(writer, this.triangles[index]);
+                }
             }
             writer.Write(this.numMatchGroups);
             for (int index1 = 0; index1 < (int)this.numMatchGroups; ++index1)
             {
                 writer.Write(this.matchGroups[index1].numVertices);
                 for (int index2 = 0; index2 < (int)this.matchGroups[index1].numVertices; ++index2)
+                {
                     writer.Write(this.matchGroups[index1].vertexIndices[index2]);
+                }
             }
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            uint num = base.GetSize() + 7U + 6U * (uint)this.GetNumTriangles();
+            uint num = base.GetSize(header) + 7U + 6U * (uint)this.GetNumTriangles();
             for (int index = 0; index < (int)this.numMatchGroups; ++index)
+            {
                 num += (uint)(2 + 2 * (int)this.matchGroups[index].numVertices);
+            }
             return num;
         }
 

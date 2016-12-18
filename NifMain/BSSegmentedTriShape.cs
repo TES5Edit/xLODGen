@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace LODGenerator.NifMain
@@ -35,7 +36,9 @@ namespace LODGenerator.NifMain
             this.dirtyFlag = shape.GetDirtyFlag();
             this.bsProperties = new int[2];
             for (int index = 0; index < 2; ++index)
+            {
                 this.bsProperties[index] = shape.GetBSProperty(index);
+            }
             this.numSegments = 0;
             this.segments = new List<BSSegment>();
         }
@@ -45,6 +48,7 @@ namespace LODGenerator.NifMain
             base.Read(header, reader);
             this.numSegments = reader.ReadInt32();
             for (int index = 0; index < this.numSegments; ++index)
+            {
                 this.segments.Add(new BSSegment(0U, (ushort)0)
                 {
                     unknownByte1 = reader.ReadByte(),
@@ -52,11 +56,12 @@ namespace LODGenerator.NifMain
                     numTriangles = reader.ReadUInt16(),
                     unknownShort1 = reader.ReadUInt16()
                 });
+            }
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.numSegments);
             for (int index = 0; index < this.numSegments; ++index)
             {
@@ -67,9 +72,9 @@ namespace LODGenerator.NifMain
             }
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return (uint)((int)base.GetSize() + 4 + this.numSegments * 9);
+            return (uint)((int)base.GetSize(header) + 4 + this.numSegments * 9);
         }
 
         public override string GetClassName()

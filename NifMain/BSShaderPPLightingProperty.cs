@@ -4,6 +4,7 @@ using System.IO;
 
 namespace LODGenerator.NifMain
 {
+    [Serializable]
     public class BSShaderPPLightingProperty : NiProperty
     {
         protected ushort Flags;
@@ -32,9 +33,9 @@ namespace LODGenerator.NifMain
             this.unknownFloat5 = 1.0f;
         }
 
-        public override void Write(BinaryWriter writer)
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            base.Write(writer);
+            base.Write(header, writer);
             writer.Write(this.Flags);
             writer.Write(this.shaderType);
             writer.Write(this.shaderFlags);
@@ -64,9 +65,9 @@ namespace LODGenerator.NifMain
             this.unknownFloat5 = reader.ReadSingle();
         }
 
-        public override uint GetSize()
+        public override uint GetSize(NiHeader header)
         {
-            return base.GetSize() + 42U;
+            return base.GetSize(header) + 42U;
         }
 
         public override string GetClassName()

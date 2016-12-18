@@ -1,4 +1,5 @@
 ﻿using LODGenerator.Common;
+using System;
 using System.IO;
 
 namespace LODGenerator.NifMain
@@ -18,14 +19,29 @@ namespace LODGenerator.NifMain
         {
             base.Read(header, reader);
             if (header.GetVersion() > 335544325U)
+            {
                 this.nameIdx = reader.ReadInt32();
+            }
             else
+            {
                 this.name = Utils.ReadSizedString(reader);
+            }
         }
 
-        public override uint GetSize()
+        public override void Write(NiHeader header, BinaryWriter writer)
         {
-            return base.GetSize() + 4U;
+            base.Write(header, writer);
+            writer.Write(this.nameIdx);
+        }
+
+        public override uint GetSize(NiHeader header)
+        {
+            return base.GetSize(header) + 4U;
+        }
+
+        public void SetNameIndex (int value)
+        {
+            this.nameIdx = value;
         }
 
         public override string GetClassName()

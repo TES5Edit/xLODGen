@@ -5,40 +5,59 @@ namespace LODGenerator.NifMain
 {
     public class NiPosData : NiObject
     {
-        private List<byte> data;
+        private uint numKeys;
+        private uint keyType;
+        private List<byte[]> data;
 
         public NiPosData()
         {
-            this.data = new List<byte>();
+            this.numKeys = 0;
+            this.keyType = 0;
+            this.data = new List<byte[]>();
         }
 
         public override void Read(NiHeader header, BinaryReader reader)
         {
             base.Read(header, reader);
-            uint num1 = reader.ReadUInt32();
-            uint num2 = reader.ReadUInt32();
-            for (int index = 0; (long)index < (long)num1; ++index)
+            this.numKeys = reader.ReadUInt32();
+            this.keyType = reader.ReadUInt32();
+            for (int index = 0; index < numKeys; ++index)
             {
-                double num3 = (double)reader.ReadSingle();
-                double num4 = (double)reader.ReadSingle();
-                double num5 = (double)reader.ReadSingle();
-                double num6 = (double)reader.ReadSingle();
-                if ((int)num2 == 2)
+                this.data.Add(reader.ReadBytes(16));
+                if (this.keyType == 2)
                 {
-                    double num7 = (double)reader.ReadSingle();
-                    double num8 = (double)reader.ReadSingle();
-                    double num9 = (double)reader.ReadSingle();
-                    double num10 = (double)reader.ReadSingle();
-                    double num11 = (double)reader.ReadSingle();
-                    double num12 = (double)reader.ReadSingle();
+                    this.data.Add(reader.ReadBytes(24));
                 }
-                else if ((int)num2 == 3)
+                else if (this.keyType == 3)
                 {
-                    double num7 = (double)reader.ReadSingle();
-                    double num8 = (double)reader.ReadSingle();
-                    double num9 = (double)reader.ReadSingle();
+                    this.data.Add(reader.ReadBytes(12));
                 }
             }
+        }
+
+        public override void Write(NiHeader header, BinaryWriter writer)
+        {
+            base.Write(header, writer);
+            writer.Write(this.numKeys);
+            writer.Write(this.keyType);
+            for (int index = 0; index < this.data.Count; index++)
+            {
+                writer.Write(this.data[index]);
+            }
+        }
+
+        public override uint GetSize(NiHeader header)
+        {
+            uint num = 16;
+            if (this.keyType == 2)
+            {
+                num += 24;
+            }
+            else if (this.keyType == 3)
+            {
+                num += 12;
+            }
+            return base.GetSize(header) + 8 + (this.numKeys * num);
         }
 
         public override string GetClassName()

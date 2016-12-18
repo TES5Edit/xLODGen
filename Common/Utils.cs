@@ -68,14 +68,22 @@ namespace LODGenerator.Common
 
     public static class Utils
     {
+        public static string ByteArrayToString(byte[] b)
+        {
+            string hex = BitConverter.ToString(b);
+            return hex.Replace("-", "");
+        }
+
         public static float ByteToFloat(byte b)
         {
-            return (float)b / 255 * 2 - 1;
+            return ((float)b / 255) * 2 - 1;
         }
 
         public static byte FloatToByte(float f)
         {
-            return (byte)Math.Round((f + 1) / 2 * 255, MidpointRounding.AwayFromZero);
+            f = Math.Min(f, 1);
+            f = Math.Max(f, -1);
+            return (byte)Math.Round(((f + 1) / 2) * 255, MidpointRounding.AwayFromZero);
         }
 
         public static byte FloatToUByte(float f)

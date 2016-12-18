@@ -9,6 +9,7 @@ using System.Linq;
 using System.Globalization;
 using DelaunayTriangulator;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text.RegularExpressions;
 
 namespace LODGenerator
 {
@@ -204,6 +205,10 @@ namespace LODGenerator
             {
                 this.material = "";
             }
+            if (quadIndex != 0 && this.material.ToLower().Contains("largeref"))
+            {
+                this.material = Regex.Replace(this.material, "-largeref", "", RegexOptions.IgnoreCase);
+            }
             this.textures = new string[10] { "", "", "", "", "", "", "", "", "", "" };
             this.textures[0] = "textures\\default.dds";
             this.textures[1] = "textures\\default_n.dds";
@@ -266,10 +271,6 @@ namespace LODGenerator
                         this.geometry.SetBitangents(extradata.GetBitangents());
                     }
                 }
-                else if (geom.IsDerivedType("BSTriShape"))
-                {
-                    geometry = new Geometry((BSTriShape)geom);
-                }
                 else
                 {
                     int index = geom.GetData();
@@ -279,7 +280,15 @@ namespace LODGenerator
                     }
                     else
                     {
-                        geometry = new Geometry((NiTriShapeData)file.GetBlockAtIndex(index));
+                        if (file.GetBlockAtIndex(index).IsDerivedType("BSTriShape"))
+                        {
+                            BSTriShape bsts = (BSTriShape)file.GetBlockAtIndex(index);
+                            geometry = bsts.GetGeom();
+                        }
+                        else
+                        {
+                            geometry = new Geometry((NiTriShapeData)file.GetBlockAtIndex(index));
+                        }
                     }
                 }
 
@@ -420,7 +429,7 @@ namespace LODGenerator
                             this.TextureClampMode = shader.GetTextureClampMode();
                             shader.SetTextureClampMode(3);
                             this.isDoubleSided = (shader.GetShaderFlags2() & 16) == 16;
-                            if (Game.Mode == "tes5" && useDecalFlag && !this.isPassThru && ((shader.GetShaderFlags1() & 67108864) == 67108864 || (shader.GetShaderFlags1() & 134217728) == 134217728))
+                            if ((Game.Mode == "tes5" || Game.Mode == "sse") && useDecalFlag && !this.isPassThru && ((shader.GetShaderFlags1() & 67108864) == 67108864 || (shader.GetShaderFlags1() & 134217728) == 134217728))
                             {
                                 this.isDecal = true;
                                 // SLSF1_Decal
@@ -439,13 +448,13 @@ namespace LODGenerator
                                 shader.SetShaderFlags2(shader.GetShaderFlags2() & 4294967263);
                             }
                             // no specular flag -> reset specular strength, color, glossiness
-                            if ((shader.GetShaderFlags1() & 1) == 0 || shader.GetSpecularStrength() == 0f || (shader.GetGlossiness() == 80f && shader.GetSpecularColor() == new Color3(0f, 0f, 0f) && shader.GetSpecularStrength() == 1f))
-                            {
+                            //if ((shader.GetShaderFlags1() & 1) == 0 || shader.GetSpecularStrength() == 0f || (shader.GetGlossiness() == 80f && shader.GetSpecularColor() == new Color3(0f, 0f, 0f) && shader.GetSpecularStrength() == 1f))
+                            //{
                                 shader.SetShaderFlags1(shader.GetShaderFlags1() & 4294967294);
                                 shader.SetGlossiness(80f);
                                 shader.SetSpecularColor(new Color3(0f, 0f, 0f));
                                 shader.SetSpecularStrength(1f);
-                            }
+                            //}
                             // no soft/rim/back/effect lighting -> reset effect lighting 1 and 2 
                             if ((shader.GetShaderFlags2() & 1308622848) == 0 || (shader.GetLightingEffect1() < 0.1f && shader.GetLightingEffect2() < 0.1f))
                             {
@@ -488,17 +497,20 @@ namespace LODGenerator
                                     }
                                     BGSMFile bgsmdata = new BGSMFile();
                                     bgsmdata.Read(gameDir, bgsmFileName, logFile);
-                                    this.textures[0] = "textures\\" + bgsmdata.textures[0];
-                                    this.textures[1] = "textures\\" + bgsmdata.textures[1];
-                                    this.textures[7] = "textures\\" + bgsmdata.textures[2];
-                                    this.TextureClampMode = bgsmdata.textureClampMode;
-                                    shader.SetTextureClampMode(this.TextureClampMode);
-                                    this.isAlpha = Convert.ToBoolean(bgsmdata.alphaFlag);
-                                    this.isDoubleSided = Convert.ToBoolean(bgsmdata.doubleSided);
-                                    shader.SetShaderFlags2(shader.GetShaderFlags2() | 16);
-                                    this.alphaThreshold = bgsmdata.alphaThreshold;
-                                    this.backlightPower = bgsmdata.backlightPower;
-                                    shader.SetBacklightPower(this.backlightPower);
+                                    if (bgsmdata.textures[0] != "")
+                                    {
+                                        this.textures[0] = "textures\\" + bgsmdata.textures[0];
+                                        this.textures[1] = "textures\\" + bgsmdata.textures[1];
+                                        this.textures[7] = "textures\\" + bgsmdata.textures[2];
+                                        this.TextureClampMode = bgsmdata.textureClampMode;
+                                        shader.SetTextureClampMode(this.TextureClampMode);
+                                        this.isAlpha = Convert.ToBoolean(bgsmdata.alphaFlag);
+                                        this.isDoubleSided = Convert.ToBoolean(bgsmdata.doubleSided);
+                                        shader.SetShaderFlags2(shader.GetShaderFlags2() | 16);
+                                        this.alphaThreshold = bgsmdata.alphaThreshold;
+                                        this.backlightPower = bgsmdata.backlightPower;
+                                        shader.SetBacklightPower(this.backlightPower);
+                                    }
                                 }
                             }
                             try

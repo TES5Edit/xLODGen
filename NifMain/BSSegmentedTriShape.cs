@@ -53,8 +53,7 @@ namespace LODGenerator.NifMain
                 {
                     unknownByte1 = reader.ReadByte(),
                     startTriangle = reader.ReadUInt32(),
-                    numTriangles = reader.ReadUInt16(),
-                    unknownShort1 = reader.ReadUInt16()
+                    numTriangles = reader.ReadUInt32(),
                 });
             }
         }
@@ -68,7 +67,6 @@ namespace LODGenerator.NifMain
                 writer.Write(this.segments[index].unknownByte1);
                 writer.Write(this.segments[index].startTriangle);
                 writer.Write(this.segments[index].numTriangles);
-                writer.Write(this.segments[index].unknownShort1);
             }
         }
 

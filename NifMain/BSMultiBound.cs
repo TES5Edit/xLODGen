@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Collections.Generic;
 
 namespace LODGenerator.NifMain
 {
@@ -20,6 +21,14 @@ namespace LODGenerator.NifMain
 
         public override void Write(NiHeader header, BinaryWriter writer)
         {
+            List<int> blockReferences = header.GetBlockReferences();
+            if (blockReferences.Count > 0)
+            {
+                if (this.data != -1)
+                {
+                    this.data = blockReferences[this.data];
+                }
+            }
             base.Write(header, writer);
             writer.Write(this.data);
         }

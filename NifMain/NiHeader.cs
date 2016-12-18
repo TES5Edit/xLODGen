@@ -26,6 +26,7 @@ namespace LODGenerator.NifMain
         private uint maxStringLength;
         private List<string> strings;
         private uint unknownInt2;
+        private List<int> blockReferences;
 
         public NiHeader()
         {
@@ -39,10 +40,11 @@ namespace LODGenerator.NifMain
             this.userVersion = 12U;
             this.userVersion2 = 83U;
             this.unknownInt2 = 0U;
-            this.creator = "LODGen 1.0 by Ehamloptiran, Zilav and Sheson";
+            this.creator = "LODGen by Ehamloptiran, Zilav and Sheson";
             this.exportInfo1 = "";
             this.exportInfo2 = "";
             this.exportInfo3 = "";
+            this.blockReferences = new List<int>();
         }
 
         public void Read(BinaryReader reader)
@@ -96,7 +98,10 @@ namespace LODGenerator.NifMain
         {
             for (int index = 0; index < blocks.Count; ++index)
             {
-                this.blockSizes[index] = blocks[index].GetSize(header);
+                if (blocks[index].GetSize(header) != 0)
+                {
+                    this.blockSizes[index] = blocks[index].GetSize(header);
+                }
             }
         }
 
@@ -142,6 +147,16 @@ namespace LODGenerator.NifMain
                 }
             }
             writer.Write(this.unknownInt2);
+        }
+
+        public void AddBlockReference(int value)
+        {
+            this.blockReferences.Add(value);
+        }
+
+        public List<int> GetBlockReferences()
+        {
+            return this.blockReferences;
         }
 
         public void SetHeaderString(string value)
@@ -199,6 +214,11 @@ namespace LODGenerator.NifMain
             return this.blockSizes[index];
         }
 
+        public uint GetNumStrings()
+        {
+            return this.numStrings;
+        }
+
         public string GetString(uint index)
         {
             if (index < strings.Count)
@@ -230,6 +250,24 @@ namespace LODGenerator.NifMain
             }
             this.blockTypeIndices.Add((ushort)num);
             this.blockSizes.Add(obj.GetSize(header));
+            ++this.numBlocks;
+        }
+
+        public void AddBlock(NiHeader header, string s, uint i)
+        {
+            int num;
+            if (this.blockTypes.Contains(s))
+            {
+                num = this.blockTypes.IndexOf(s);
+            }
+            else
+            {
+                this.blockTypes.Add(s);
+                num = this.blockTypes.Count - 1;
+                ++this.numBlockTypes;
+            }
+            this.blockTypeIndices.Add((ushort)num);
+            this.blockSizes.Add(i);
             ++this.numBlocks;
         }
 

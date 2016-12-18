@@ -176,6 +176,30 @@ namespace LODGenerator.NifMain
             return this.numTrianglePoints;
         }
 
+        public void SetGeom(Geometry geom)
+        {
+            this.triangles = geom.GetTriangles();
+            this.vertices = geom.GetVertices();
+            this.normals = geom.GetNormals();
+            this.tangents = geom.GetTangents();
+            this.bitangents = geom.GetBitangents();
+            this.vertexColors = geom.GetVertexColors();
+            this.uvCoords = geom.GetUVCoords();
+        }
+
+        public Geometry GetGeom()
+        {
+            Geometry geom = new Geometry();
+            geom.SetTriangles(this.triangles);
+            geom.SetVertices(this.vertices);
+            geom.SetNormals(this.normals);
+            geom.SetTangents(this.tangents);
+            geom.SetBitangents(this.bitangents);
+            geom.SetVertexColors(this.vertexColors);
+            geom.SetUVCoords(this.uvCoords);
+            return geom;
+        }
+
         public override string GetClassName()
         {
             return "NiTriShapeData";

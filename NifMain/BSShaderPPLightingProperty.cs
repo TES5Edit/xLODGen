@@ -1,6 +1,7 @@
 ﻿using LODGenerator.Common;
 using System;
 using System.IO;
+using System.Collections.Generic;
 
 namespace LODGenerator.NifMain
 {
@@ -35,6 +36,14 @@ namespace LODGenerator.NifMain
 
         public override void Write(NiHeader header, BinaryWriter writer)
         {
+            List<int> blockReferences = header.GetBlockReferences();
+            if (blockReferences.Count > 0)
+            {
+                if (this.textureSet != -1)
+                {
+                    this.textureSet = blockReferences[this.textureSet];
+                }
+            }
             base.Write(header, writer);
             writer.Write(this.Flags);
             writer.Write(this.shaderType);

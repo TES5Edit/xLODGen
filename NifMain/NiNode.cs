@@ -40,10 +40,18 @@ namespace LODGenerator.NifMain
 
         public override void Write(NiHeader header, BinaryWriter writer)
         {
+            List<int> blockReferences = header.GetBlockReferences();
             base.Write(header, writer);
             writer.Write(this.numChildren);
             for (int index = 0; (long)index < (long)this.numChildren; ++index)
             {
+                if (blockReferences.Count > 0)
+                {
+                    if (this.children[index] != -1)
+                    {
+                        this.children[index] = blockReferences[this.children[index]];
+                    }
+                }
                 writer.Write(this.children[index]);
             }
             if (header.GetUserVersion2() < 130)
@@ -51,6 +59,13 @@ namespace LODGenerator.NifMain
                 writer.Write(this.numEffects);
                 for (int index = 0; (long)index < (long)this.numEffects; ++index)
                 {
+                    if (blockReferences.Count > 0)
+                    {
+                        if (this.effects[index] != -1)
+                        {
+                            this.effects[index] = blockReferences[this.effects[index]];
+                        }
+                    }
                     writer.Write(this.effects[index]);
                 }
             }

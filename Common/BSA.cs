@@ -13,6 +13,7 @@ namespace LODGenerator.Common
         private string name;
         private bool defaultCompressed;
         private bool defaultFlag9;
+        private bool compressionType;
         private static readonly BSAList LoadedArchives = new BSAList();
         private static readonly Dictionary<string, BSAArchiveFileInfo> FileList = new Dictionary<string, BSAArchiveFileInfo>();
 
@@ -66,30 +67,56 @@ namespace LODGenerator.Common
                 {
                     start = binary.ReadByte();
                     string str = new string(binary.ReadChars(start));
+                    //Console.WriteLine("filename found");
                 }
                 if (compressed)
                 {
-                    if (zsize != 0)
+                    // https://github.com/IonKiwi/lz4.net for interop C++ version
+                    // https://github.com/Fody/Costura to merge dlls into exe
+                    if (bsa.compressionType)
                     {
-                        byte[] b = new byte[size - start];
-                        byte[] output = new byte[zsize];
-                        binary.Read(b, 0, (int)size - start);
-                        ICSharpCode.SharpZipLib.Zip.Compression.Inflater inf = new ICSharpCode.SharpZipLib.Zip.Compression.Inflater();
-                        inf.SetInput(b, 0, b.Length);
-                        inf.Inflate(output);
-                        binary.Close();
-                        return output;
+                        if (zsize != 0)
+                        {
+                            byte[] b = new byte[size - start];
+                            byte[] output = new byte[zsize];
+                            binary.Read(b, 0, (int)size - start);
+                            output = lz4.LZ4Helper.Decompress(b);
+                            return output;
+                        }
+                        else
+                        {
+                            byte[] b = new byte[size - 4 - start];
+                            uint l = binary.ReadUInt32();
+                            byte[] output = new byte[l];
+                            binary.Read(b, 0, (int)size - 4 -start);
+                            output = lz4.LZ4Helper.Decompress(b);
+                            return output;
+                        }
                     }
                     else
                     {
-                        byte[] b = new byte[size - 4 - start];
-                        byte[] output = new byte[binary.ReadUInt32()];
-                        binary.Read(b, 0, (int)size - 4 - start);
-                        ICSharpCode.SharpZipLib.Zip.Compression.Inflater inf = new ICSharpCode.SharpZipLib.Zip.Compression.Inflater();
-                        inf.SetInput(b, 0, b.Length);
-                        inf.Inflate(output);
-                        binary.Close();
-                        return output;
+                        if (zsize != 0)
+                        {
+                            byte[] b = new byte[size - start];
+                            byte[] output = new byte[zsize];
+                            binary.Read(b, 0, (int)size - start);
+                            ICSharpCode.SharpZipLib.Zip.Compression.Inflater inf = new ICSharpCode.SharpZipLib.Zip.Compression.Inflater();
+                            inf.SetInput(b, 0, b.Length);
+                            inf.Inflate(output);
+                            binary.Close();
+                            return output;
+                        }
+                        else
+                        {
+                            byte[] b = new byte[size - 4 - start];
+                            byte[] output = new byte[binary.ReadUInt32()];
+                            binary.Read(b, 0, (int)size - 4 - start);
+                            ICSharpCode.SharpZipLib.Zip.Compression.Inflater inf = new ICSharpCode.SharpZipLib.Zip.Compression.Inflater();
+                            inf.SetInput(b, 0, b.Length);
+                            inf.Inflate(output);
+                            binary.Close();
+                            return output;
+                        }
                     }
                 }
                 else
@@ -165,15 +192,19 @@ namespace LODGenerator.Common
         {
             public string path;
             public readonly ulong hash;
-            public readonly uint count;
-            public uint offset;
-            public BSAFolderInfo(BinaryReader binary)
+            public readonly ulong count;
+            public ulong offset;
+            public BSAFolderInfo(BinaryReader binary, BSAHeader header)
             {
                 path = null;
                 offset = 0;
                 hash = binary.ReadUInt64();
                 count = binary.ReadUInt32();
-                binary.BaseStream.Position += 4;
+                binary.ReadUInt32();
+                if (header.bsaVersion == 0x69)
+                {
+                    binary.ReadUInt64();
+                }
             }
         }
 
@@ -253,7 +284,7 @@ namespace LODGenerator.Common
             {
                 if (header.bsaVersion != 0x01)
                 {
-                    theLog.WriteLog("Unknown BA2 version " + archivepath);
+                    theLog.WriteLog("Unknown BA2 version " + header.bsaVersion + " " + archivepath);
                     binary.Close();
                     return;
                 }
@@ -275,11 +306,20 @@ namespace LODGenerator.Common
             }
             if (header.bsaType == "BSA")
             {
-                if (header.bsaVersion != 0x67 && header.bsaVersion != 0x68)
+                if (header.bsaVersion != 0x67 && header.bsaVersion != 0x68 && header.bsaVersion != 0x69)
                 {
-                    theLog.WriteLog("Unknown BSA version " + archivepath);
+                    theLog.WriteLog("Unknown BSA version " + header.bsaVersion + " " + archivepath);
                     binary.Close();
                     return;
+                }
+                // LZ4?
+                if (header.bsaVersion == 0x69)
+                {
+                    compressionType = true;
+                }
+                else
+                {
+                    compressionType = false;
                 }
                 if ((header.archiveFlags & 0x4) > 0)
                 {
@@ -302,9 +342,9 @@ namespace LODGenerator.Common
                 BSAFileInfo[] fileInfo = new BSAFileInfo[header.fileCount];
                 for (int index = 0; index < header.folderCount; index++)
                 {
-                    folderInfo[index] = new BSAFolderInfo(binary);
+                    folderInfo[index] = new BSAFolderInfo(binary, header);
                 }
-                uint count = 0;
+                ulong count = 0;
                 for (uint index = 0; index < header.folderCount; index++)
                 {
                     byte b = binary.ReadByte();
@@ -318,7 +358,7 @@ namespace LODGenerator.Common
                     }
                     binary.BaseStream.Position++;
                     folderInfo[index].offset = count;
-                    for (int index2 = 0; index2 < folderInfo[index].count; index2++)
+                    for (ulong index2 = 0; index2 < folderInfo[index].count; index2++)
                     {
                         fileInfo[count + index2] = new BSAFileInfo(binary, defaultCompressed);
                     }
@@ -334,7 +374,7 @@ namespace LODGenerator.Common
 
                 for (int index = 0; index < header.folderCount; index++)
                 {
-                    for (int index2 = 0; index2 < folderInfo[index].count; index2++)
+                    for (ulong index2 = 0; index2 < folderInfo[index].count; index2++)
                     {
                         BSAFileInfo bsaFileInfo = fileInfo[folderInfo[index].offset + index2];
                         BSAArchiveFileInfo bsaArchiveFileInfo = new BSAArchiveFileInfo(this, bsaFileInfo.offset, bsaFileInfo.size, 0);

@@ -21,6 +21,18 @@ namespace LODGenerator.NifMain
             this.isStaticBound = reader.ReadByte();
         }
 
+        public override void Write(NiHeader header, BinaryWriter writer)
+        {
+            base.Write(header, writer);
+            Utils.WriteVector4(writer, this.alphaSortBound);
+            writer.Write(this.isStaticBound);
+        }
+
+        public override uint GetSize(NiHeader header)
+        {
+            return base.GetSize(header) + 17;
+        }
+
         public override string GetClassName()
         {
             return "BSOrderedNode";

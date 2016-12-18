@@ -53,6 +53,14 @@ namespace LODGenerator.NifMain
 
         public override void Write(NiHeader header, BinaryWriter writer)
         {
+            List<int> blockReferences = header.GetBlockReferences();
+            if (blockReferences.Count > 0)
+            {
+                if (this.collisionObject != -1)
+                {
+                    this.collisionObject = blockReferences[this.collisionObject];
+                }
+            }
             base.Write(header, writer);
             writer.Write(this.flags);
             if ((header.GetUserVersion() >= 11U) && (header.GetUserVersion2() >= 26U))
@@ -67,6 +75,10 @@ namespace LODGenerator.NifMain
                 writer.Write((uint)this.properties.Count);
                 for (int index = 0; (long)index < this.properties.Count; ++index)
                 {
+                    if (blockReferences.Count > 0)
+                    {
+                        this.properties[index] = blockReferences[this.properties[index]];
+                    }
                     writer.Write(this.properties[index]);
                 }
             }

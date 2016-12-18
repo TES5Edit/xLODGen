@@ -170,7 +170,7 @@ namespace LODGenerator
             return data;
         }
 
-        public BSSubIndexTriShape ToBSSubIndexTriShape()
+        public BSSubIndexTriShape ToBSSubIndexTriShape(bool generateVertexColors)
         {
             BSSubIndexTriShape data = new BSSubIndexTriShape();
             BBox bbox = new BBox(float.MaxValue, float.MinValue, float.MaxValue, float.MinValue, float.MaxValue, float.MinValue);
@@ -194,11 +194,95 @@ namespace LODGenerator
             data.SetNumTriangles(this.GetNumTriangles());
             data.SetNumVertices(this.GetNumVertices());
             data.SetDataSize((uint)this.GetNumVertices() * 20 + (uint)GetNumTriangles() * 6);
-            data.SetVertices(this.GetVertices());
-            data.SetUVCoords(this.GetUVCoords());
-            data.SetNormals(this.GetNormals());
-            data.SetTangents(this.GetTangents());
-            data.SetBitangents(this.GetBitangents());
+
+            ushort vflag = 0;
+
+            if (this.HasVertices())
+            {
+                data.SetVertices(this.GetVertices());
+                vflag |= 16;
+            }
+            if (this.HasUVCoords())
+            {
+                data.SetUVCoords(this.GetUVCoords());
+                vflag |= 32;
+            }
+            if (this.HasNormals())
+            {
+                data.SetNormals(this.GetNormals());
+                vflag |= 128;
+            }
+            if (this.HasTangents())
+            {
+                data.SetTangents(this.GetTangents());
+                data.SetBitangents(this.GetBitangents());
+                vflag |= 256;
+            }
+            if (generateVertexColors && this.HasVertexColors())
+            {
+                data.SetVertexColors(this.GetVertexColors());
+                vflag |= 512;
+            }
+            //data.SetVertexFlags(vflag);
+            data.SetTriangles(this.GetTriangles());
+            data.UpdateVertexData();
+
+            return data;
+        }
+
+        public BSTriShape ToBSTriShape(BSTriShape data, bool generateVertexColors)
+        {
+            BBox bbox = new BBox(float.MaxValue, float.MinValue, float.MaxValue, float.MinValue, float.MaxValue, float.MinValue);
+            for (int index = 0; index < (int)this.GetNumVertices(); ++index)
+            {
+                bbox.GrowByVertex(this.vertices[index]);
+            }
+            data.SetCenter(bbox.GetCenter());
+
+            float num1 = float.MinValue;
+            for (int index = 0; index < (int)this.GetNumVertices(); ++index)
+            {
+                Vector3 vector3_1 = this.GetVertices()[index];
+                Vector3 vector3_2 = data.GetCenter() - vector3_1;
+                float num2 = (float)((double)vector3_2[0] * (double)vector3_2[0] + (double)vector3_2[1] * (double)vector3_2[1] + (double)vector3_2[2] * (double)vector3_2[2]);
+                if ((double)num2 > (double)num1)
+                    num1 = num2;
+            }
+            data.SetRadius((float)Math.Sqrt((double)num1));
+
+            data.SetNumTriangles(this.GetNumTriangles());
+            data.SetNumVertices(this.GetNumVertices());
+            data.SetDataSize((uint)this.GetNumVertices() * 20 + (uint)GetNumTriangles() * 6);
+
+            ushort vflag = 0;
+
+            if (this.HasVertices())
+            {
+                data.SetVertices(this.GetVertices());
+                vflag |= 16;
+            }
+            if (this.HasUVCoords())
+            {
+                data.SetUVCoords(this.GetUVCoords());
+                vflag |= 32;
+            }
+            if (this.HasNormals())
+            {
+                data.SetNormals(this.GetNormals());
+                vflag |= 128;
+            }
+            if (this.HasTangents())
+            {
+                data.SetTangents(this.GetTangents());
+                data.SetBitangents(this.GetBitangents());
+                vflag |= 256;
+            }
+            if (generateVertexColors && this.HasVertexColors())
+            {
+                data.SetVertexColors(this.GetVertexColors());
+                vflag |= 512;
+            }
+            //data.SetVertexFlags(vflag);
             data.SetTriangles(this.GetTriangles());
             data.UpdateVertexData();
 

@@ -35,6 +35,41 @@ namespace LODGenerator.NifMain
             }
         }
 
+        public override void Write(NiHeader header, BinaryWriter writer)
+        {
+            List<int> blockReferences = header.GetBlockReferences();
+            base.Write(header, writer);
+            writer.Write(this.numBones);
+            for (int index = 0; (long)index < (long)this.numBones; ++index)
+            {
+                if (blockReferences.Count > 0)
+                {
+                    if (this.bones[index] != -1)
+                    {
+                        this.bones[index] = blockReferences[this.bones[index]];
+                    }
+                }
+                writer.Write(this.bones[index]);
+            }
+            writer.Write(this.numBones2);
+            for (int index = 0; (long)index < (long)this.numBones2; ++index)
+            {
+                if (blockReferences.Count > 0)
+                {
+                    if (this.bones2[index] != -1)
+                    {
+                        this.bones2[index] = blockReferences[this.bones2[index]];
+                    }
+                }
+                writer.Write(this.bones2[index]);
+            }
+        }
+
+        public override uint GetSize(NiHeader header)
+        {
+            return base.GetSize(header) + 8 + (this.numBones * 4) + (this.numBones2 * 4);
+        }
+
         public override string GetClassName()
         {
             return "BSTreeNode";

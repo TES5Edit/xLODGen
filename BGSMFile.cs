@@ -126,9 +126,10 @@ namespace LODGenerator
                 }
                 else
                 {
-                    logFile.WriteLog(fileName + " not found");
-                    logFile.Close();
-                    System.Environment.Exit(404);
+                    logFile.WriteLog(fileName + " not found!");
+                    return;
+                    //logFile.Close();
+                    //System.Environment.Exit(404);
                 }
             }
             catch (Exception ex)

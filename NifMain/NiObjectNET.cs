@@ -36,6 +36,14 @@ namespace LODGenerator.NifMain
 
         public override void Write(NiHeader header, BinaryWriter writer)
         {
+            List<int> blockReferences = header.GetBlockReferences();
+            if (blockReferences.Count > 0)
+            {
+                if (this.controller != -1)
+                {
+                    this.controller = blockReferences[this.controller];
+                }
+            }
             base.Write(header, writer);
             if (header.GetVersion() <= 335544325U)
             {
@@ -61,14 +69,17 @@ namespace LODGenerator.NifMain
             {
                 for (int index = 0; index < this.extraData.Count; index++)
                 {
+                    if (blockReferences.Count > 0)
+                    {
+                        if (this.extraData[index] != -1)
+                        {
+                            this.extraData[index] = blockReferences[this.extraData[index]];
+                        }
+                    }
                     writer.Write(this.extraData[index]);
                 }
             }
-            writer.Write(-1);
-            if (this.controller != -1)
-            {
-                //Console.WriteLine("Not writing controller " + this.name);
-            }
+            writer.Write(controller);
         }
 
         public override uint GetSize(NiHeader header)

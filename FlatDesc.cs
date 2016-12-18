@@ -12,6 +12,7 @@ namespace LODGenerator
         public float shiftZ;
         public float scale;
         public float effect1;
+        public string GlowTexture;
         public List<Vector3> normals;
         public List<Vector3> tangents;
         public List<Vector3> bitangents;

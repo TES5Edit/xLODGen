@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Runtime.InteropServices;
 using Ini;
 
 namespace LODGeneratorCMD
@@ -14,13 +15,48 @@ namespace LODGeneratorCMD
 
     internal class Program
     {
+        [DllImport("shell32.dll", SetLastError = true)]
+        static extern IntPtr CommandLineToArgvW([MarshalAs(UnmanagedType.LPWStr)] string lpCmdLine, out int pNumArgs);
+
+        public static string[] CommandLineToArgs(string commandLine)
+        {
+            int argc;
+            var argv = CommandLineToArgvW(commandLine, out argc);
+            if (argv == IntPtr.Zero)
+                throw new System.ComponentModel.Win32Exception();
+            try
+            {
+                var args = new string[argc];
+                for (var i = 0; i < args.Length; i++)
+                {
+                    var p = Marshal.ReadIntPtr(argv, i * IntPtr.Size);
+                    args[i] = Marshal.PtrToStringUni(p);
+                }
+
+                return args;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(argv);
+            }
+        }
+
         private static Dictionary<string, string> CollectCmdArgs(string[] args)
         {
             Dictionary<string, string> dictionary = new Dictionary<string, string>();
-            for (int index = 1; index < Enumerable.Count<string>((IEnumerable<string>)args); ++index)
+            for (int index = 0; index < Enumerable.Count<string>((IEnumerable<string>)args); ++index)
             {
                 string str = "";
-                string key = args[index].Remove(0, 2).ToLower(CultureInfo.InvariantCulture);
+                string key = str;
+                try
+                {
+                    key = args[index].Remove(0, 2).ToLower(CultureInfo.InvariantCulture);
+                }
+                catch
+                {
+                    Console.WriteLine("Command line paramter error");
+                    System.Environment.Exit(666);
+                }
                 if (index + 1 < Enumerable.Count<string>((IEnumerable<string>)args) && !args[index + 1].StartsWith("--"))
                     str = args[++index];
                 dictionary.Add(key, str);
@@ -30,6 +66,10 @@ namespace LODGeneratorCMD
 
         private static int Main(string[] args)
         {
+            if (Environment.CommandLine.Contains("\\\""))
+            {
+                args = CommandLineToArgs(Environment.CommandLine.Replace("\\\"", "\""));
+            }
             Dictionary<string, string> cmdArgs = Program.CollectCmdArgs(args);
             string logFileName = CmdArgs.GetString(cmdArgs, "logfile", Directory.GetCurrentDirectory() + "\\LODGen_log.txt");
             LogFile theLog = new LogFile(logFileName);
@@ -40,7 +80,7 @@ namespace LODGeneratorCMD
                 theLog.Close();
                 return -1;
             }
-            string path = args[0];
+            string path = CmdArgs.GetString(cmdArgs, "inputfile", args[0]);
             if (!File.Exists(path))
             {
                 theLog.WriteLog("No input file " + path);
@@ -65,17 +105,20 @@ namespace LODGeneratorCMD
             string worldspaceName = "";
             string gameDir = "";
             string outputDir = "";
+            string texturesListFile = "";
             string uvfile = "";
             string flatfile = "";
             string altfile = "";
             float southWestX = 0;
             float southWestY = 0;
             float atlasTolerance = 0.2f;
+            bool verbose = false;
             bool generateVertexColors = true;
             bool dontFixTangents = false;
             bool dontGenerateTangents = false;
             bool mergeShapes = true;
             bool removeUnseenFaces = false;
+            float removeUnseenZShift = 0;
             bool ignoreWater = false;
             bool useHDFlag = true;
             bool useOptimizer = false;
@@ -85,6 +128,8 @@ namespace LODGeneratorCMD
             bool useBacklightPower = false;
             bool useDecalFlag = false;
             bool dontGroup = true;
+            bool removeBlocks = false;
+            int flatLODLevelLODFlag = -1;
             float globalScale = 1f;
             while (!streamReader.EndOfStream)
             {
@@ -120,6 +165,12 @@ namespace LODGeneratorCMD
                             Directory.CreateDirectory(outputDir);
                         }
                     }
+
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "textureslistfile")
+                    {
+                        texturesListFile = strArray2[1];
+                    }
+
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "textureatlasmap")
                     {
                         uvfile = strArray2[1];
@@ -141,23 +192,45 @@ namespace LODGeneratorCMD
                     }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "ishdmeshmask")
                     {
-                        HDMesh.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
+                        if (strArray2[1] != "")
+                        {
+                            HDMesh.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
+                        }
                     }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "nothdmeshmask")
                     {
-                        notHDMesh.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
+                        if (strArray2[1] != "")
+                        {
+                            notHDMesh.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
+                        }
                     }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "passthrumeshmask")
                     {
-                        PassThruMesh.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
+                        if (strArray2[1] != "")
+                        {
+                            PassThruMesh.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
+                        }
                     }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "ishdtexturemask")
                     {
-                        HDTexture.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
+                        if (strArray2[1] != "")
+                        {
+                            HDTexture.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture).Replace("data\\", ""));
+                        }
+                    }
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "texturediffusehd")
+                    {
+                        if (strArray2[1] != "")
+                        {
+                            HDTexture.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture).Replace("data\\", ""));
+                        }
                     }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "nothdtexturemask")
                     {
-                        notHDTexture.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
+                        if (strArray2[1] != "")
+                        {
+                            notHDTexture.Add(strArray2[1].ToLower(CultureInfo.InvariantCulture));
+                        }
                     }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "atlastolerance")
                     {
@@ -196,7 +269,11 @@ namespace LODGeneratorCMD
                     {
                         removeUnseenFaces = Boolean.Parse(strArray2[1]);
                     }
-                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "ignorewater")
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "removeunseenzshift")
+                    {
+                        removeUnseenZShift = float.Parse(strArray2[1]);
+                    }
+                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "ignorewater")
                     {
                         ignoreWater = Boolean.Parse(strArray2[1]);
                     }
@@ -232,15 +309,33 @@ namespace LODGeneratorCMD
                     {
                         dontGroup = Boolean.Parse(strArray2[1]);
                     }
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "flatlodlevellodflag")
+                    {
+                        flatLODLevelLODFlag = int.Parse(strArray2[1]);
+                        flatLODLevelLODFlag--;
+                    }
                     if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "globalscale")
                     {
                         globalScale = float.Parse(strArray2[1], CultureInfo.InvariantCulture);
+                    }
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "removeblocks")
+                    {
+                        removeBlocks = Boolean.Parse(strArray2[1]);
+                    }
+                    if (strArray2[0].ToLower(CultureInfo.InvariantCulture) == "verbose")
+                    {
+                        verbose = Boolean.Parse(strArray2[1]);
                     }
                 }
                 else
                 {
                     break;
                 }
+            }
+
+            if (CmdArgs.GetBool(cmdArgs, "gamemode", false))
+            {
+                Game.Mode = CmdArgs.GetString(cmdArgs, "gamemode", Game.Mode).ToLower();
             }
 
             if (CmdArgs.GetBool(cmdArgs, "dontGenerateVertexColors", false))
@@ -279,46 +374,64 @@ namespace LODGeneratorCMD
             {
                 globalScale = CmdArgs.GetFloat(cmdArgs, "globalScale", 1f);
             }
+            if (CmdArgs.GetBool(cmdArgs, "verbose", false))
+            {
+                verbose = true;
+            }
 
             int int1 = CmdArgs.GetInt(cmdArgs, "lodLevel", Int32.MinValue);
             int int2 = CmdArgs.GetInt(cmdArgs, "x", Int32.MinValue);
             int int3 = CmdArgs.GetInt(cmdArgs, "y", Int32.MinValue);
             theLog.WriteLog("Game Mode: " + Game.Mode.ToUpper());
-            theLog.WriteLog("Fix Tangents: " + (!dontFixTangents ? "True" : "False"));
-            theLog.WriteLog("Generate Tangents: " + (!dontGenerateTangents ? "True" : "False"));
-            theLog.WriteLog("Generate Vertex Colors: " + (generateVertexColors ? "True" : "False"));
-            theLog.WriteLog("Merge Meshes: " + (mergeShapes ? "True" : "False"));
-            theLog.WriteLog("Grouping: " + (dontGroup ? "False" : "True"));
-            theLog.WriteLog("Remove Faces under Terrain: " + (removeUnseenFaces ? "True" : "False"));
-            theLog.WriteLog("Remove Faces under Water: " + (!ignoreWater ? "True" : "False"));
-            theLog.WriteLog("Use HD Flag: " + (useHDFlag ? "True" : "False"));
-            //theLog.WriteLog("Use Optimizer: " + (useOptimizer ? "True" : "False"));
-            theLog.WriteLog("Ignore Materials: " + (ignoreMaterial ? "True" : "False"));
-            theLog.WriteLog("Alpha DoubleSided: " + (alphaDoubleSided ? "True" : "False"));
-            theLog.WriteLog("Use Alpha Threshold: " + (useAlphaThreshold ? "True" : "False"));
-            theLog.WriteLog("Use Backlight Power: " + (useBacklightPower ? "True" : "False"));
-            theLog.WriteLog("Use Decal Flag: " + (useDecalFlag ? "True" : "False"));
-            theLog.WriteLog("Global scale: " + string.Format("{0:0.00}", globalScale));
-            theLog.WriteLog("Specific level: " + (int1 != Int32.MinValue ? int1.ToString() : "No"));
-            if (int2 != Int32.MinValue && int3 == Int32.MinValue)
-                theLog.WriteLog("Specific quad: [" + (object)int2.ToString() + ", X]");
-            else if (int2 == Int32.MinValue && int3 != Int32.MinValue)
-                theLog.WriteLog("Specific quad: [X, " + (object)int3.ToString() + "]");
-            else if (int2 != Int32.MinValue && int3 != Int32.MinValue)
-                theLog.WriteLog("Specific quad: [" + (object)int2.ToString() + ", " + (string)(object)int3.ToString() + "]");
-            else
-                theLog.WriteLog("Specific quad: No");
+            if (Game.Mode != "textureslist")
+            {
+                theLog.WriteLog("Fix Tangents: " + (!dontFixTangents ? "True" : "False"));
+                theLog.WriteLog("Generate Tangents: " + (!dontGenerateTangents ? "True" : "False"));
+                theLog.WriteLog("Generate Vertex Colors: " + (generateVertexColors ? "True" : "False"));
+                theLog.WriteLog("Merge Meshes: " + (mergeShapes ? "True" : "False"));
+                theLog.WriteLog("Grouping: " + (dontGroup ? "False" : "True"));
+                theLog.WriteLog("Remove Faces under Terrain: " + (removeUnseenFaces ? "True" : "False"));
+                theLog.WriteLog("Remove Faces under Water: " + (!ignoreWater ? "True" : "False"));
+                if (removeUnseenZShift != 0)
+                {
+                    theLog.WriteLog("Remove Faces Z-Shift: " + removeUnseenZShift);
+                }
+                theLog.WriteLog("Use HD Flag: " + (useHDFlag ? "True" : "False"));
+                //theLog.WriteLog("Use Optimizer: " + (useOptimizer ? "True" : "False"));
+                theLog.WriteLog("Ignore Materials: " + (ignoreMaterial ? "True" : "False"));
+                theLog.WriteLog("Alpha DoubleSided: " + (alphaDoubleSided ? "True" : "False"));
+                theLog.WriteLog("Use Alpha Threshold: " + (useAlphaThreshold ? "True" : "False"));
+                theLog.WriteLog("Use Backlight Power: " + (useBacklightPower ? "True" : "False"));
+                theLog.WriteLog("Use Decal Flag: " + (useDecalFlag ? "True" : "False"));
+                theLog.WriteLog("Global scale: " + string.Format("{0:0.00}", globalScale));
+                theLog.WriteLog("Specific level: " + (int1 != Int32.MinValue ? int1.ToString() : "No"));
+                if (int2 != Int32.MinValue && int3 == Int32.MinValue)
+                    theLog.WriteLog("Specific quad: [" + (object)int2.ToString() + ", X]");
+                else if (int2 == Int32.MinValue && int3 != Int32.MinValue)
+                    theLog.WriteLog("Specific quad: [X, " + (object)int3.ToString() + "]");
+                else if (int2 != Int32.MinValue && int3 != Int32.MinValue)
+                    theLog.WriteLog("Specific quad: [" + (object)int2.ToString() + ", " + (string)(object)int3.ToString() + "]");
+                else
+                    theLog.WriteLog("Specific quad: No");
+                theLog.WriteLog("Output: " + outputDir);
+            }
 
             streamReader.Close();
             if (worldspaceName == "")
             {
-                theLog.WriteLog("No Worldspace");
+                theLog.WriteLog("No Worldspace, set Worldspace=");
                 theLog.Close();
                 return -1;
             }
             if (outputDir == "")
             {
-                theLog.WriteLog("No PathOutput");
+                theLog.WriteLog("No PathOutput, set PathOutput=");
+                theLog.Close();
+                return -1;
+            }
+            if (Game.Mode == "textureslist" && texturesListFile == "")
+            {
+                theLog.WriteLog("No output file for textures list, set TexturesListFile=");
                 theLog.Close();
                 return -1;
             }
@@ -341,7 +454,7 @@ namespace LODGeneratorCMD
                     }
                 }
             }*/
-            BSAArchive.Load(BSAFiles, theLog, (CmdArgs.GetBool(cmdArgs, "verbose", false)));
+            BSAArchive.Load(BSAFiles, theLog, verbose);
             streamReader = new StreamReader(path);
             for (int index = 0; index < counter; ++index)
             {
@@ -455,7 +568,7 @@ namespace LODGeneratorCMD
             {
                 uvfile = System.AppDomain.CurrentDomain.BaseDirectory + uvfile;
             }
-            if (File.Exists(uvfile))
+            if (File.Exists(uvfile) && Game.Mode != "textureslist")
             {
                 theLog.WriteLog("Using UV Atlas: " + uvfile);
                 streamReader = new StreamReader(uvfile);
@@ -555,6 +668,14 @@ namespace LODGeneratorCMD
                         flatDesc.shiftZ = float.Parse(strArray2[3], CultureInfo.InvariantCulture);
                         flatDesc.scale = float.Parse(strArray2[4], CultureInfo.InvariantCulture);
                         flatDesc.effect1 = float.Parse(strArray2[5], CultureInfo.InvariantCulture);
+                        if (strArray2.Length >= 8)
+                        {
+                            flatDesc.GlowTexture = strArray2[7].ToLower(CultureInfo.InvariantCulture);
+                        }
+                        else
+                        {
+                            flatDesc.GlowTexture = "textures\\white.dds";
+                        }
                         flatDesc.normals = new List<Vector3>();
                         flatDesc.tangents = new List<Vector3>();
                         flatDesc.bitangents = new List<Vector3>();
@@ -638,8 +759,22 @@ namespace LODGeneratorCMD
             }
             Game.atlasToleranceMin = atlasTolerance * -1f;
             Game.atlasToleranceMax = atlasTolerance + 1f;
-            theLog.WriteLog("Output: " + outputDir);
-            theLog.WriteLog("Generating LOD for worldspace " + worldspaceName);
+            if (Game.Mode == "tes5" || Game.Mode == "sse" || Game.Mode == "fo3" || Game.Mode == "fo4")
+            {
+                theLog.WriteLog("Generating LOD for worldspace " + worldspaceName);
+            }
+            else if (Game.Mode.Contains("merge"))
+            {
+                theLog.WriteLog("Merging meshes");
+            }
+            else if (Game.Mode.Contains("convert"))
+            {
+                theLog.WriteLog("Converting meshes");
+            }
+            else if (Game.Mode.Contains("textures"))
+            {
+                theLog.WriteLog("Creating textures list");
+            }
             theLog.WriteLog("");
             List<Thread> list1 = new List<Thread>();
             int num = 1;
@@ -651,7 +786,8 @@ namespace LODGeneratorCMD
                     List<int> list2 = (List<int>)state;
                     new LODApp(worldspaceName, outputDir, gameDir, theLog)
                     {
-                        verbose = (CmdArgs.GetBool(cmdArgs, "verbose", false)),
+                        verbose = verbose,
+                        texturesListFile = texturesListFile,
                         fixTangents = !dontFixTangents,
                         generateTangents = !dontGenerateTangents,
                         generateVertexColors = generateVertexColors,
@@ -669,6 +805,7 @@ namespace LODGeneratorCMD
                         atlasToleranceMin = Game.atlasToleranceMin,
                         atlasToleranceMax = Game.atlasToleranceMax,
                         removeUnderwaterFaces = !ignoreWater,
+                        removeUnseenZShift = removeUnseenZShift,
                         ignoreMaterial = ignoreMaterial,
                         alphaDoublesided = alphaDoubleSided,
                         useAlphaThreshold = useAlphaThreshold,
@@ -676,6 +813,8 @@ namespace LODGeneratorCMD
                         useDecalFlag = useDecalFlag,
                         dontGroup = dontGroup,
                         skyblivionTexPath = CmdArgs.GetBool(cmdArgs, "skyblivionTexPath", false),
+                        removeBlocks = removeBlocks,
+                        flatLODLevelLODFlag = flatLODLevelLODFlag,
                         ignoreTransRot = ignoreList,
                         HDTextureList = HDTexture,
                         notHDTextureList = notHDTexture,
@@ -702,7 +841,7 @@ namespace LODGeneratorCMD
                         --index2;
                     }
                 }
-                Thread.Sleep(100);
+                Thread.Sleep(50);
             }
             //if (Game.Mode == "convert4" || Game.Mode == "convert5")
             {

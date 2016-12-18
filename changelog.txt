@@ -1,4 +1,17 @@
 Changelog
+1.0.5
+	added support reading SSE LOD nif
+	added export Mode=SSE
+	added support for BSA version 0x69
+	added lz4 decompression
+        added GameMode=textureslist to generate a list of textures with UV in between atlas tolerance
+        added command line paramater gamemode to overwrite gamemode in export file
+
+1.0.4
+	added optional --inputfile path/to/file command line paramater, first paramater just being path/to/file still works too
+	added support for 3rd texture slot from flattexture file
+	added setting LOD Objects flag for >= LOD levels through FlatLODLevelLODFlat in export file
+
 1.0.3
 	fixed a case of calculating wrong offset for LOD higher levels if origin is not multiple of 4
 	fixed not being able to generate for specific cell if x/y equals -1

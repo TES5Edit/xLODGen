@@ -88,6 +88,14 @@ namespace LODGenerator.NifMain
 
         public override void Write(NiHeader header, BinaryWriter writer)
         {
+            List<int> blockReferences = header.GetBlockReferences();
+            if (blockReferences.Count > 0)
+            {
+                if (this.textureSet != -1)
+                {
+                    this.textureSet = blockReferences[this.textureSet];
+                }
+            }
             writer.Write(this.shaderType);
             base.Write(header, writer);
             writer.Write(this.shaderFlags1);

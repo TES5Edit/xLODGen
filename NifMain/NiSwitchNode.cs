@@ -23,6 +23,18 @@ namespace LODGenerator.NifMain
             this.unknownInt1 = reader.ReadInt32();
         }
 
+        public override void Write(NiHeader header, BinaryWriter writer)
+        {
+            base.Write(header, writer);
+            writer.Write(this.unknownFlags1);
+            writer.Write(this.unknownInt1);
+        }
+
+        public override uint GetSize(NiHeader header)
+        {
+            return base.GetSize(header) + 6;
+        }
+
         public override string GetClassName()
         {
             return "NiSwitchNode";

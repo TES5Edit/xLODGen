@@ -153,15 +153,137 @@ namespace LODGenerator
             {
                 "BSSegmentedTriShape",
                 typeof (BSSegmentedTriShape)
+            },
+            {
+                "BSInvMarker",
+                typeof (BSInvMarker)
+            },
+            {
+                "NiCollisionObject",
+                typeof (NiCollisionObject)
+            },
+            {
+                "bhkNiCollisionObject",
+                typeof (bhkNiCollisionObject)
+            },
+            {
+                "bhkCollisionObject",
+                typeof (bhkCollisionObject)
+            },
+            {
+                "bhkRefObject",
+                typeof (bhkRefObject)
+            },
+            {
+                "bhkSerializable",
+                typeof (bhkSerializable)
+            },
+            {
+                "bhkWorldObject",
+                typeof (bhkWorldObject)
+            },
+            {
+                "bhkEntity",
+                typeof (bhkEntity)
+            },
+            {
+                "bhkRigidBody",
+                typeof (bhkRigidBody)
+            },
+            {
+                "bhkShape",
+                typeof (bhkShape)
+            },
+            {
+                "bhkCompressedMeshShape",
+                typeof(bhkCompressedMeshShape)
+            },
+            {
+                "bhkBvTreeShape",
+                typeof (bhkBvTreeShape)
+            },
+            {
+                "bhkMoppBvTreeShape",
+                typeof (bhkMoppBvTreeShape)
+            },
+            {
+                "BSWaterShaderProperty",
+                typeof  (BSWaterShaderProperty)
+            },
+            {
+                "NiInterpolator",
+                typeof (NiInterpolator)
+            },
+            {
+                "NiKeyBasedInterpolator",
+                typeof (NiKeyBasedInterpolator)
+            },
+            {
+                "NiFloatInterpolator",
+                typeof (NiFloatInterpolator)
+            },
+            {
+                "NiFloatData",
+                typeof (NiFloatData)
+            },
+            {
+                "NiTimeController",
+                typeof (NiTimeController)
+            },
+            {
+                "NiInterpController",
+                typeof (NiInterpController)
+            },
+            {
+                "NiSingleInterpController",
+                typeof (NiSingleInterpController)
+            },
+            {
+                "NiFloatInterpController",
+                typeof (NiFloatInterpController)
+            },
+            {
+                "BSEffectShaderPropertyColorController",
+                typeof (BSEffectShaderPropertyColorController)
+            },
+            {
+                "BSEffectShaderPropertyFloatController",
+                typeof (BSEffectShaderPropertyFloatController)
+            },
+            {
+                "NiKeyframeController",
+                typeof (NiKeyframeController)
+            },
+            {
+                "NiTransformController",
+                typeof (NiTransformController)
+            },
+            {
+                "NiTransformInterpolator",
+                typeof (NiTransformInterpolator)
+            },
+            {
+                "BSMultiBoundOBB",
+                typeof (BSMultiBoundOBB)
+            },
+            {
+                "NiSkinInstance",
+                typeof (NiSkinInstance)
             }
         };
         private NiHeader header;
         private List<NiObject> blocks;
+        private List<byte[]> rawBlocks;
+        private List<string> blockType;
+        private List<uint> blockSize;
 
         public NiFile()
         {
             this.header = new NiHeader();
             this.blocks = new List<NiObject>();
+            this.rawBlocks = new List<byte[]>();
+            this.blockType = new List<string>();
+            this.blockSize = new List<uint>();
         }
 
         public void Read(string gameDir, string fileName, LogFile logFile)
@@ -201,7 +323,7 @@ namespace LODGenerator
                     }
                     catch (Exception ex)
                     {
-                        logFile.WriteLog("Error reading " + fileName + " from BSA/BA2 " + ex.Message);
+                        logFile.WriteLog("Error reading " + fileName + " from BSA/BA2 " + ex.Message + ex.Source);
                         logFile.Close();
                         System.Environment.Exit(501);
                     }
@@ -226,20 +348,28 @@ namespace LODGenerator
             try
             {
                 this.header.Read(reader);
+                var stream = reader.BaseStream;
                 for (int index = 0; (long)index < (long)this.header.GetNumBlocks(); ++index)
                 {
+                    //Console.WriteLine("Reading block " + index + " of " + this.header.GetNumBlocks() + " = " + stream.Position + " = " + this.header.GetBlockTypeAtIndex(index));
                     if (NiFile.classTypes.ContainsKey(this.header.GetBlockTypeAtIndex(index)))
                     {
                         NiObject niObject = (NiObject)Activator.CreateInstance(NiFile.classTypes[this.header.GetBlockTypeAtIndex(index)]);
                         niObject.Read(this.header, reader);
                         this.blocks.Add(niObject);
+                        this.rawBlocks.Add(new byte[0]);
+                        this.blockType.Add(this.header.GetBlockTypeAtIndex(index));
+                        this.blockSize.Add(this.header.GetBlockSizeAtIndex(index));
                     }
                     else
                     {
                         error = "Unsupported block " + index + " " + this.header.GetBlockTypeAtIndex(index) + " in " + gameDir + fileName;
+                        //logFile.WriteLog("Unsupported block " + index + " " + this.header.GetBlockTypeAtIndex(index) + " in " + gameDir + fileName);
                         uint blockSizeAtIndex = this.header.GetBlockSizeAtIndex(index);
-                        reader.ReadBytes((int)blockSizeAtIndex);
                         this.blocks.Add((NiObject)null);
+                        this.rawBlocks.Add(reader.ReadBytes((int)blockSizeAtIndex));
+                        this.blockType.Add(this.header.GetBlockTypeAtIndex(index));
+                        this.blockSize.Add(this.header.GetBlockSizeAtIndex(index));
                     }
                 }
             }
@@ -254,26 +384,43 @@ namespace LODGenerator
 
         public void Write(string fileName, LogFile logFile)
         {
-            try
+            //try
             {
                 BinaryWriter writer = new BinaryWriter((Stream)new FileStream(fileName, FileMode.Create));
                 this.header.Update(header, this.blocks);
                 this.header.Write(writer);
                 for (int index = 0; (long)index < (long)this.header.GetNumBlocks(); ++index)
                 {
-                    this.blocks[index].Write(header, writer);
+                    if (this.blockSize[index] == 0)
+                    {
+                        this.blocks[index].Write(header, writer);
+                    }
+                    else
+                    {
+                        writer.Write(this.rawBlocks[index]);
+                    }
                 }
                 writer.Write(1);
                 writer.Write(0);
                 writer.Close();
             }
-            catch (Exception ex)
+            /*catch (Exception ex)
             {
                 logFile.WriteLog("Error writing " + fileName + " " + ex.Message);
                 logFile.WriteLog("In case Mod Organizer is used, set output path outside of game and MO virtual file system directory");
                 logFile.Close();
                 System.Environment.Exit(502);
-            }
+            }*/
+        }
+
+        public void AddBlockReference(int value)
+        {
+            this.header.AddBlockReference(value);
+        }
+
+        public List<int> GetBlockReferences()
+        {
+            return this.header.GetBlockReferences();
         }
 
         public int GetNumBlocks()
@@ -284,6 +431,31 @@ namespace LODGenerator
         public NiObject GetBlockAtIndex(int index)
         {
             return this.blocks[index];
+        }
+
+        public byte[] GetRawBlockAtIndex(int index)
+        {
+            return this.rawBlocks[index];
+        }
+
+        public string GetBlockTypeAtIndex(int index)
+        {
+            return this.header.GetBlockTypeAtIndex(index);
+        }
+
+        public string GetRawBlockTypeAtIndex(int index)
+        {
+            return this.blockType[index];
+        }
+
+        public uint GetRawBlockSizeAtIndex(int index)
+        {
+            return this.blockSize[index];
+        }
+
+        public uint GetNumStrings()
+        {
+            return this.header.GetNumStrings();
         }
 
         public string GetStringAtIndex(int index)
@@ -329,8 +501,21 @@ namespace LODGenerator
         public int AddBlock(NiObject obj)
         {
             this.blocks.Add(obj);
+            this.rawBlocks.Add(new byte[0]);
+            this.blockType.Add("");
+            this.blockSize.Add(0);
             this.header.AddBlock(this.header, obj);
             return this.blocks.Count - 1;
+        }
+
+        public int AddRawBlock(byte[] b, string s)
+        {
+            this.blocks.Add(new NiObject());
+            this.rawBlocks.Add(b);
+            this.blockType.Add(s);
+            this.blockSize.Add((uint)b.Length);
+            this.header.AddBlock(this.header, s, (uint)b.Length);
+            return this.rawBlocks.Count - 1;
         }
 
         public int AddString(string str)

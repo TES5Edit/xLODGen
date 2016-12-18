@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!--Project was exported from assembly: C:\LODGen.exe-->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -27,6 +27,8 @@
     <ApplicationVersion>1.0.0.0</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -52,7 +54,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release64|AnyCPU'">
-    <AssemblyName>LODGen64</AssemblyName>
+    <AssemblyName>LODGenx64</AssemblyName>
     <OutputPath>bin\Release64\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -61,8 +63,16 @@
     <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>lodgen.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="lz4.AnyCPU.loader, Version=1.0.4.0, Culture=neutral, PublicKeyToken=7aa3c636ef56b77f, processorArchitecture=MSIL">
+      <HintPath>packages\IonKiwi.lz4.net.1.0.5\lib\net40-client\lz4.AnyCPU.loader.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
   </ItemGroup>
@@ -81,14 +91,44 @@
     <Compile Include="Common\BSA.cs" />
     <Compile Include="Common\Ini.cs" />
     <Compile Include="Geometry.cs" />
+    <Compile Include="NifMain\bhkBvTreeShape.cs" />
+    <Compile Include="NifMain\bhkCollisionObject.cs" />
+    <Compile Include="NifMain\bhkCompressedMeshShape.cs" />
+    <Compile Include="NifMain\bhkEntity.cs" />
+    <Compile Include="NifMain\bhkMoppBvTreeShape.cs" />
+    <Compile Include="NifMain\bhkNiCollisionObject.cs" />
+    <Compile Include="NifMain\bhkRefObject.cs" />
+    <Compile Include="NifMain\bhkRigidBody.cs" />
+    <Compile Include="NifMain\bhkSerializable.cs" />
+    <Compile Include="NifMain\bhkShape.cs" />
+    <Compile Include="NifMain\bhkWorldObject.cs" />
+    <Compile Include="NifMain\BSDistantObjectLargeRefExtraData.cs" />
+    <Compile Include="NifMain\BSEffectShaderPropertyColorController.cs" />
+    <Compile Include="NifMain\BSEffectShaderPropertyFloatController.cs" />
+    <Compile Include="NifMain\BSInvMarker.cs" />
     <Compile Include="NifMain\BSMeshLODTriShape.cs" />
+    <Compile Include="NifMain\BSMultiBoundOBB.cs" />
     <Compile Include="NifMain\BSSITSSegment.cs" />
     <Compile Include="NifMain\BSSubIndexTriShape.cs" />
     <Compile Include="NifMain\BSTreeNode.cs" />
     <Compile Include="NifMain\BSTriShape.cs" />
     <Compile Include="NifMain\BSShaderPPLightingProperty.cs" />
+    <Compile Include="NifMain\BSWaterShaderProperty.cs" />
     <Compile Include="NifMain\NiBillboardNode.cs" />
+    <Compile Include="NifMain\NiCollisionObject.cs" />
+    <Compile Include="NifMain\NiFloatData.cs" />
+    <Compile Include="NifMain\NiFloatInterpController.cs" />
+    <Compile Include="NifMain\NiFloatInterpolator.cs" />
+    <Compile Include="NifMain\NiInterpController.cs" />
+    <Compile Include="NifMain\NiInterpolator.cs" />
+    <Compile Include="NifMain\NiKeyBasedInterpolator.cs" />
+    <Compile Include="NifMain\NiKeyframeController.cs" />
+    <Compile Include="NifMain\NiSingleInterpController.cs" />
+    <Compile Include="NifMain\NiSkinInstance.cs" />
     <Compile Include="NifMain\NiSwitchNode.cs" />
+    <Compile Include="NifMain\NiTimeController.cs" />
+    <Compile Include="NifMain\NiTransformController.cs" />
+    <Compile Include="NifMain\NiTransformInterpolator.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -212,6 +252,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -245,6 +286,29 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="costura32\lz4.dll" />
+    <EmbeddedResource Include="costura64\lz4.dll" />
+    <Content Include="FodyWeavers.xml" />
+    <Content Include="lodgen.ico" />
+    <Content Include="lz4.x64.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="lz4.x86.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
+  <Import Project="packages\Fody.1.29.4\build\portable-net+sl+win+wpa+wp\Fody.targets" Condition="Exists('packages\Fody.1.29.4\build\portable-net+sl+win+wpa+wp\Fody.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\Fody.1.29.4\build\portable-net+sl+win+wpa+wp\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Fody.1.29.4\build\portable-net+sl+win+wpa+wp\Fody.targets'))" />
+  </Target>
 </Project>

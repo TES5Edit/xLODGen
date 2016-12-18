@@ -41,7 +41,7 @@ namespace LODGenerator.NifMain
         public override void Read(NiHeader header, BinaryReader reader)
         {
             base.Read(header, reader);
-            if (header.GetUserVersion2() == 130)
+            /*if (header.GetUserVersion2() == 100 || header.GetUserVersion2() == 130)
             {
                 this.center = Utils.ReadVector3(reader);
                 this.radius = reader.ReadSingle();
@@ -49,7 +49,7 @@ namespace LODGenerator.NifMain
                 this.bsProperties[0] = reader.ReadInt32();
                 this.bsProperties[1] = reader.ReadInt32();
             }
-            else
+            else*/
             {
                 this.data = reader.ReadInt32();
                 this.skinInstance = reader.ReadInt32();
@@ -87,8 +87,24 @@ namespace LODGenerator.NifMain
 
         public override void Write(NiHeader header, BinaryWriter writer)
         {
+            List<int> blockReferences = header.GetBlockReferences();
+            if (blockReferences.Count > 0)
+            {
+                if (this.skinInstance != -1)
+                {
+                    this.skinInstance = blockReferences[this.skinInstance];
+                }
+                if (this.bsProperties[0] != -1)
+                {
+                    this.bsProperties[0] = blockReferences[this.bsProperties[0]];
+                }
+                if (this.bsProperties[1] != -1)
+                {
+                    this.bsProperties[1] = blockReferences[this.bsProperties[1]];
+                }
+            }
             base.Write(header, writer);
-            if (header.GetUserVersion2() == 130)
+            /*if (header.GetUserVersion2() == 100 || header.GetUserVersion2() == 130)
             {
                 Utils.WriteVector3(writer, this.center);
                 writer.Write(this.radius);
@@ -96,7 +112,7 @@ namespace LODGenerator.NifMain
                 writer.Write(this.bsProperties[0]);
                 writer.Write(this.bsProperties[1]);
             }
-            else
+            else*/
             {
                 writer.Write(this.data);
                 writer.Write(this.skinInstance);
@@ -134,7 +150,7 @@ namespace LODGenerator.NifMain
 
         public override uint GetSize(NiHeader header)
         {
-            if (header.GetUserVersion2() == 130)
+            if (header.GetUserVersion2() == 100 || header.GetUserVersion2() == 130)
             {
                 return base.GetSize(header) + 28U;
             }

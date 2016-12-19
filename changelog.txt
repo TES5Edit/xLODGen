@@ -1,4 +1,7 @@
 Changelog
+1.0.6
+	updated lz4 package to latest version
+
 1.0.5
 	added support reading SSE LOD nif
 	added export Mode=SSE

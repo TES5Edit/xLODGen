@@ -1,4 +1,7 @@
 Changelog
+1.0.7
+	better error message in case required Redistributable is missing
+
 1.0.6
 	updated lz4 package to latest version
 

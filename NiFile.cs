@@ -324,6 +324,10 @@ namespace LODGenerator
                     catch (Exception ex)
                     {
                         logFile.WriteLog("Error reading " + fileName + " from BSA/BA2 " + ex.Message + ex.Source);
+                        if (ex.Source.ToLower().Contains("mscorlib"))
+                        {
+                            logFile.WriteLog("Install Visual C++ Redistributable for Visual Studio 2015 from https://www.microsoft.com/en-us/download/details.aspx?id=48145");
+                        }
                         logFile.Close();
                         System.Environment.Exit(501);
                     }
